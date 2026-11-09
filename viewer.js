@@ -111,7 +111,7 @@ body.mode-photos #sortBtn { display: none; }
     row.append(logo);
     const a = document.createElement('a');
     a.id = 'topLogout';
-    a.href = 'logout.php';
+    a.href = 'logout.php?t=' + encodeURIComponent($('meta[name=csrf]')?.content || '');
     const uname = $('meta[name=user]')?.content || '';
     a.title = uname ? `Выйти (${uname})` : 'Выйти';
     a.innerHTML = ico('logout');

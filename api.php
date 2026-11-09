@@ -13,9 +13,7 @@ function items_arg(array $in): array {
 
 /* ---------- избранное (SQLite) ---------- */
 function fav_db(): PDO {
-    $db = app_db();
-    $db->exec('CREATE TABLE IF NOT EXISTS fav(path TEXT PRIMARY KEY, dir INTEGER NOT NULL DEFAULT 0, user TEXT, ts INTEGER NOT NULL)');
-    return $db;
+    return app_db(); // таблица fav создаётся в app_db() (main.sqlite)
 }
 function fav_move(string $old, string $new): void {
     try {
@@ -32,6 +30,9 @@ function fav_remove(string $rel): void {
 }
 
 $a = $_GET['a'] ?? '';
+// изменяющие действия только через POST (а значит, только с CSRF-токеном)
+$MUT = ['mkdir', 'rename', 'delete', 'move', 'copy', 'restore', 'purge', 'empty', 'fav_add', 'fav_del'];
+if (in_array($a, $MUT, true) && $_SERVER['REQUEST_METHOD'] !== 'POST') json_out(['error' => 'method not allowed'], 405);
 try {
     $in = [];
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {

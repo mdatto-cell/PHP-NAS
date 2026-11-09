@@ -22,7 +22,11 @@ if (is_file($full)) {
 if (!class_exists('ZipArchive')) dl_fail(500, 'В PHP не включено расширение zip (extension=zip в php.ini)');
 
 $name = ($rel === '' ? 'Файлы' : basename($full));
-$tmp = tempnam(sys_get_temp_dir(), 'zip');
+$tmpdir = cfg('data') . '\\tmp'; ensure_dir($tmpdir);
+$tmp = tempnam($tmpdir, 'zip');
+if ($tmp === false) dl_fail(500, 'Нет доступа к папке временных файлов');
+// удалить архив при любом завершении: успех, ошибка, обрыв скачивания клиентом
+register_shutdown_function(function () use ($tmp) { if (is_file($tmp)) @unlink($tmp); });
 $zip = new ZipArchive();
 if ($zip->open($tmp, ZipArchive::OVERWRITE) !== true) dl_fail(500, 'Не удалось создать архив');
 session_write_close();
@@ -43,7 +47,7 @@ function zip_walk(ZipArchive $zip, string $dir, string $prefix, int $depth, int 
     }
 }
 zip_walk($zip, $full, $name . '/', 0, $count);
-if (!$zip->close()) { @unlink($tmp); dl_fail(500, 'Не удалось завершить архив'); }
+if (!$zip->close()) dl_fail(500, 'Не удалось завершить архив');
 
 ev('download', $rel, '', $name, 'd');
 header('Content-Type: application/zip');
@@ -52,4 +56,3 @@ header('Content-Disposition: ' . dl_name($name . '.zip'));
 header('Cache-Control: no-store');
 while (ob_get_level()) ob_end_clean();
 readfile($tmp);
-@unlink($tmp);

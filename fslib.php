@@ -2,14 +2,29 @@
 declare(strict_types=1);
 require_once __DIR__ . '/photos_lib.php';
 
+// Основная БД сайта (main.sqlite): История, Корзина, Избранное.
+// Индекс галереи хранится отдельно в photos.sqlite (photos_db() в photos_lib.php)
+// и может удаляться/пересоздаваться без потери этих данных.
 function app_db(): PDO {
     static $db = null;
     if ($db === null) {
-        $db = photos_db();
+        $dir = (string)cfg('data'); ensure_dir($dir);
+        $db = new PDO('sqlite:' . $dir . '\\main.sqlite');
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db->exec('PRAGMA busy_timeout=15000');
+        $db->exec('PRAGMA journal_mode=WAL');
+        $db->exec('PRAGMA synchronous=NORMAL');
         $db->exec('CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY, ts INTEGER NOT NULL, user TEXT, act TEXT NOT NULL,
             path TEXT, path2 TEXT, name TEXT, kind TEXT, n INTEGER NOT NULL DEFAULT 1, dev TEXT, ip TEXT)');
         $db->exec('CREATE TABLE IF NOT EXISTS trash(tname TEXT PRIMARY KEY, orig TEXT, name TEXT, dir INTEGER, size INTEGER, ts INTEGER, user TEXT)');
+        $db->exec('CREATE TABLE IF NOT EXISTS fav(path TEXT PRIMARY KEY, dir INTEGER NOT NULL DEFAULT 0, user TEXT, ts INTEGER NOT NULL)');
     }
+    return $db;
+}
+// Индекс галереи (photos.sqlite), одно соединение на запрос
+function media_db(): PDO {
+    static $db = null;
+    if ($db === null) $db = photos_db();
     return $db;
 }
 function device(): string {
@@ -29,12 +44,12 @@ function like_esc(string $s): string { return addcslashes($s, '%_\\'); }
 /* ---------- индекс фото ---------- */
 function idx_remove(string $rel): void {
     try {
-        app_db()->prepare("DELETE FROM media WHERE path = ? OR path LIKE ? ESCAPE '\\'")->execute([$rel, like_esc($rel) . '/%']);
+        media_db()->prepare("DELETE FROM media WHERE path = ? OR path LIKE ? ESCAPE '\\'")->execute([$rel, like_esc($rel) . '/%']);
     } catch (Throwable $e) { error_log('idx_remove: ' . $e->getMessage()); }
 }
 function idx_move(string $old, string $new): void {
     try {
-        $db = app_db();
+        $db = media_db();
         $db->prepare("UPDATE media SET path = ? || substr(path, ?) WHERE path LIKE ? ESCAPE '\\'")
            ->execute([$new . '/', mb_strlen($old) + 2, like_esc($old) . '/%']);
         $db->prepare('UPDATE media SET path = ?, name = ? WHERE path = ?')->execute([$new, basename($new), $old]);

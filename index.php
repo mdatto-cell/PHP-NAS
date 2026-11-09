@@ -22,7 +22,7 @@ boot('page');
       <a href="#history" id="navHistory" class="navitem"><span class="i" data-i="history"></span>История</a>
     </nav>
     <div class="space"><div class="bar"><i id="spaceBar"></i></div><span id="spaceTxt"></span></div>
-    <a href="logout.php" class="navitem logout"><span class="i" data-i="logout"></span>Выйти (<span id="uname"></span>)</a>
+    <a href="logout.php?t=<?= urlencode($_SESSION['csrf']) ?>" class="navitem logout"><span class="i" data-i="logout"></span>Выйти (<span id="uname"></span>)</a>
   </aside>
   <main id="main">
     <header id="top">

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
-$CFG = require __DIR__ . '/config.php';
+// config.php лежит на уровень выше DocumentRoot (например, H:\www\config.php)
+$CFG = require dirname(__DIR__) . '/config.php';
 function cfg(string $k) { global $CFG; return $CFG[$k] ?? null; }
 
 function is_https(): bool {
