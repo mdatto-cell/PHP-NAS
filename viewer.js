@@ -250,14 +250,20 @@ sorted = function() {
       T.L = T.items.filter(i => !f || i.name.toLowerCase().includes(f)).sort((x, y) => {
         return sort === 'date' ? cmp(x, y) : ((y.d - x.d) || cmp(x, y));
       });
+      const be = $('#btnEmpty'); if (be) be.style.display = T.items.length ? '' : 'none';   // «Очистить корзину» — только если есть что очищать
       if (!T.items.length) { el.innerHTML = '<div class="tinfo">Корзина пуста</div>'; return; }
       if (!T.L.length) { el.innerHTML = '<div class="tinfo">Ничего не найдено</div>'; return; }
-      el.innerHTML = '<div class="tinfo">Объекты хранятся в корзине, пока вы не очистите её (или пока не истечёт срок trash_days, если он задан).</div>' +
-        T.L.map((it, i) => `<div class="row trow${T.sel.has(it.id) ? ' sel' : ''}" data-i="${i}"><div class="ic">${it.d ? FOLDER : fileSvg(kindOf(it.name))}</div>` +
+      el.innerHTML = T.L.map((it, i) => `<div class="row trow${T.sel.has(it.id) ? ' sel' : ''}" data-i="${i}"><div class="ic">${it.d ? FOLDER : fileSvg(kindOf(it.name))}</div>` +
           `<div class="nm">${esc(it.name)}<small>${it.orig ? 'из: ' + esc(dirOf(it.orig) || 'Файлы') : 'исходное место неизвестно'}</small></div>` +
           `<div class="dt">${fmtDate(it.t)}</div><div class="sz">${it.d ? '' : fmtSize(it.s)}</div><button class="icon more">${ico('kebab')}</button></div>`).join('');
     };
   }
+}
+
+// кнопка «Очистить корзину» скрыта, пока список корзины не загружен
+{
+  const baseShowTrash = showTrash;
+  showTrash = function () { const r = baseShowTrash(); const be = $('#btnEmpty'); if (be && !T.items.length) be.style.display = 'none'; return r; };
 }
 
 function selectSort(modeKey) {
@@ -565,6 +571,7 @@ async function showV() {
   else if (VID.has(e)) b.innerHTML = `<video src="${fileUrl(p)}" controls autoplay playsinline></video>`;
   else if (AUD.has(e)) b.innerHTML = `<audio src="${fileUrl(p)}" controls autoplay></audio>`;
   else if (e === 'pdf') b.innerHTML = `<iframe src="${fileUrl(p)}"></iframe>`;
+  else if (typeof OFFICE_ON !== 'undefined' && OFFICE_ON && (OFF_WORD.has(e) || OFF_XLS.has(e))) await showOffice(it, p, e, b, tok);
   else {
     const buf = await (await fetch(fileUrl(p))).arrayBuffer();
     if (tok !== vTok) return;
@@ -621,20 +628,37 @@ Object.assign(IC, {
   zip:      SV('<path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M12 10v6m0 0-2.5-2.5M12 16l2.5-2.5"/>'),
 });
 document.head.append(Object.assign(document.createElement('style'), {textContent: `
-#favv { position: fixed; top: 0; right: 0; bottom: 0; z-index: 30; background: #1f1f23; overflow: auto; padding: 22px 28px; }
+/* «Избранное» — обычный раздел внутри #main, вёрстка строк как в «Файлах» */
+#favv { flex: 1; overflow: auto; padding: 0 10px 30px; }
 #favv[hidden] { display: none !important; }
-#favv h2 { margin: 0 0 16px; font-size: 22px; font-weight: 600; }
-#favv .frow { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 10px; cursor: pointer; }
-#favv .frow:hover { background: #ffffff0d; }
-#favv .frow .fi { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; }
-#favv .frow .fi .ic-svg { width: 24px; height: 24px; }
-#favv .frow .fn { flex: 1; min-width: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#favv .frow .fn small { display: block; color: #8e8e99; font-size: 12px; }
-#favv .frow .fs { color: #8e8e99; font-size: 13px; }
-#favv .frow button, #favv .frow a { background: transparent; border: 0; color: #ffc933; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
-#favv .frow a { color: #cfcfd8; }
-#favv .frow button:hover, #favv .frow a:hover { background: #ffffff14; }
-#favv .empty { color: #8e8e99; margin-top: 60px; text-align: center; }
+#favv .nm small { display: block; color: var(--mut); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+#favv .row { position: relative; }
+#favv .fact { position: absolute; right: 56px; top: 50%; transform: translateY(-50%); display: flex; gap: 2px; }
+#favv .more { visibility: hidden; }
+/* колонки как в «Файлах»: место под чекбокс слева и под кнопки «Скачать/Избранное» справа */
+#favv .row, #trashv:not(.grid) .row { padding-left: 38px; }
+#favv .row .sz, #trashv:not(.grid) .row .sz { margin-right: 84px; }
+#favv .fact button { width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: #9a9aa6; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+#favv .fact button:hover { background: #ffffff14; color: #fff; }
+#favv .fact button .ic-svg { width: 20px; height: 20px; }
+#favv .fact button[data-u] { color: #ffc933; }
+#favv.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 170px)); justify-content: start; align-content: start; grid-auto-rows: max-content; gap: 8px; padding: 0 10px 30px; }
+#favv.grid .row { padding: 8px; position: relative; }
+#favv.grid .row .nm small, #favv.grid .more { display: none; }
+#favv.grid .row .sz { margin-right: 0; }
+#favv.grid .row .ic { position: relative; }
+#favv.grid .fact { display: contents; }
+#favv.grid .fact button, #favv.grid .ic > button[data-u] { position: absolute; z-index: 3; width: 32px; height: 32px; border-radius: 50%; background: rgba(32, 32, 38, .82); color: #e6e6ea; opacity: 0; transition: opacity .12s; }
+#favv.grid .fact button { top: 12px; left: 12px; }
+#favv.grid .ic > button[data-u] { left: 4px; bottom: 4px; color: #ffc933; opacity: 1; border: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+#favv.grid .ic > button[data-u] .ic-svg { width: 20px; height: 20px; }
+#favv.grid .row:hover .fact button { opacity: 1; }
+@media (hover: none) { #favv.grid .fact button { opacity: 1; } }
+/* единая шапка во всех разделах: высота как в «Файлах» (с полем поиска), чтобы заголовок не прыгал */
+#top { box-sizing: border-box; min-height: 65px; }
+/* отступы контента как в «Файлах»: текст с 12px внутри области 10px */
+#photos { padding-left: 10px; }
+#pinfo { padding: 4px 12px 6px; }
 
 /* иконки «Избранное» и «Скачать» — режим списка: слева от «⋮» */
 #list:not(.grid) .row { position: relative; }
@@ -650,11 +674,17 @@ document.head.append(Object.assign(document.createElement('style'), {textContent
 #list.grid .row { position: relative; }
 #list.grid .row .ract { display: contents; }
 #list.grid .row .ract button { position: absolute; left: 8px; z-index: 3; width: 32px; height: 32px; border-radius: 50%; background: rgba(32, 32, 38, .82); color: #e6e6ea; opacity: 0; transition: opacity .12s, background .12s; }
-#list.grid .row .ract button[data-fa=dl] { top: 8px; }
-#list.grid .row .ract button[data-fa=star] { bottom: 8px; }
-#list.grid .row .ract button:hover { background: rgba(60, 60, 68, .95); }
+#list.grid .row .ract button[data-fa=dl] { top: 12px; left: 12px; }
+#list.grid .row .more { top: 12px; right: 12px; width: 32px; height: 32px; padding: 0; border-radius: 50%; background: rgba(32, 32, 38, .82); color: #e6e6ea; display: inline-flex; align-items: center; justify-content: center; z-index: 3; }
+#list.grid .row .ract button:hover, #list.grid .row .ic > button[data-fa=star]:hover { background: rgba(60, 60, 68, .95); }
 #list.grid .row:hover .ract button, #list.grid .row .ract button.fv { opacity: 1; }
-#list.grid .row .ract button.fv { color: #ffc933; }
+/* «Избранное» в плитке — внутри области иконки, слева снизу (не наезжает на название) */
+#list.grid .row .ic { position: relative; }
+#list.grid .row .ic > button[data-fa=star] { position: absolute; left: 4px; bottom: 4px; z-index: 3; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: rgba(32, 32, 38, .82); color: #e6e6ea; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .12s, background .12s; }
+#list.grid .row .ic > button[data-fa=star] .ic-svg { width: 20px; height: 20px; }
+#list.grid .row:hover .ic > button[data-fa=star], #list.grid .row .ic > button[data-fa=star].fv { opacity: 1; }
+#list.grid .row .ic > button[data-fa=star].fv { color: #ffc933; }
+@media (hover: none) { #list.grid .row .ract button, #list.grid .row .ic > button[data-fa=star] { opacity: 1; } }
 `}));
 
 const FAVS = new Set();
@@ -686,14 +716,18 @@ function markFavs() {
       const more = r.querySelector('.more');
       if (more) more.before(box); else r.append(box);
     }
-    const sb = box.querySelector('[data-fa=star]');
+    let sb = r.querySelector('[data-fa=star]');
+    if (!sb) { sb = document.createElement('button'); sb.dataset.fa = 'star'; box.append(sb); }
+    const ic = r.querySelector('.ic'), grid = $('#list').classList.contains('grid');
+    if (grid && ic && sb.parentNode !== ic) ic.append(sb);
+    else if (!grid && sb.parentNode !== box) box.append(sb);
     sb.className = on ? 'fv' : ''; sb.title = on ? 'Убрать из избранного' : 'В избранное';
     sb.innerHTML = ico(on ? 'starFill' : 'star');
     box.classList.toggle('on', on);
   });
 }
 document.getElementById('list').addEventListener('click', e => {
-  const b = e.target.closest('.ract [data-fa]'); if (!b) return;
+  const b = e.target.closest('.row [data-fa]'); if (!b) return;
   e.stopPropagation(); e.preventDefault();
   const r = b.closest('.row[data-i]'); let it; try { it = sorted()[+r.dataset.i]; } catch (_) {}
   if (!it) return;
@@ -739,28 +773,72 @@ document.addEventListener('click', e => {
   }).observe(m, {childList: true});
 }
 
-const favPanel = document.createElement('div'); favPanel.id = 'favv'; favPanel.hidden = true; document.body.append(favPanel);
+const favPanel = document.createElement('section'); favPanel.id = 'favv'; favPanel.hidden = true;
+($('#histv') ? $('#histv').after(favPanel) : $('#main').append(favPanel));
 const navFav = document.createElement('a');
-navFav.id = 'navFav'; navFav.className = 'navitem'; navFav.href = '#'; navFav.innerHTML = ico('star') + '<span>Избранное</span>';
+navFav.id = 'navFav'; navFav.className = 'navitem'; navFav.href = '#fav'; navFav.innerHTML = ico('star') + '<span>Избранное</span>';
 (document.getElementById('ftree') || document.getElementById('navFiles')).after(navFav);
 async function favShow() {
-  const items = await favLoad();
-  favPanel.style.left = $('#side').offsetWidth + 'px';
-  favPanel.innerHTML = '<h2>Избранное</h2>' + (items.length ? items.map((i, k) =>
-    `<div class="frow" data-k="${k}"><span class="fi">${i.d ? FOLDER : fileSvg(kindOf(i.n))}</span>` +
-    `<span class="fn">${esc(i.n)}<small>${esc(['Файлы', ...(dirOf(i.p) ? dirOf(i.p).split('/') : [])].join(' › '))}</small></span>` +
-    `<span class="fs">${i.d ? '' : fmtSize(i.s)}</span>` +
-    (i.d ? `<a data-z="${k}" title="Скачать ZIP">${ico('zip')}</a>` : `<a data-dl="${k}" title="Скачать">${ico('download')}</a>`) +
-    `<button data-u="${k}" title="Убрать из избранного">${ico('starFill')}</button></div>`).join('')
-    : '<div class="empty">Здесь появятся файлы и папки, отмеченные звёздочкой</div>');
-  favPanel._items = items;
   favPanel.hidden = false; fab.hidden = true;
-  qa('#side .navitem').forEach(n => n.classList.toggle('on', n === navFav));
+  qa('#side .navitem').forEach(n => n.classList.toggle('active', n === navFav));
+  favPanel._all = await favLoad();
+  favDraw();
 }
-function favHide() { if (favPanel.hidden) return; favPanel.hidden = true; navFav.classList.remove('on'); updateFab(); }
-navFav.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); favShow(); });
+// отрисовка «Избранного» с учётом поиска, сортировки и вида (список/плитки) — как в «Файлах»
+function favDraw() {
+  if (mode !== 'fav') return;
+  const all = favPanel._all || [], f = filter.toLowerCase(), dir = sortOrder === 'desc' ? -1 : 1;
+  const cmp = {name: (x, y) => dir * x.n.localeCompare(y.n, 'ru', {numeric: true}), date: (x, y) => dir * ((x.m || 0) - (y.m || 0)), size: (x, y) => dir * ((x.s || 0) - (y.s || 0))}[sort] || (() => 0);
+  const items = all.filter(i => !f || i.n.toLowerCase().includes(f)).sort((x, y) => (y.d - x.d) || cmp(x, y));
+  const grid = view === 'grid';
+  favPanel.className = grid ? 'grid' : '';
+  $('#viewBtn').innerHTML = ico(grid ? 'list' : 'grid');
+  const star = k => `<button data-u="${k}" title="Убрать из избранного">${ico('starFill')}</button>`;
+  favPanel.innerHTML = !all.length ? '<div class="tinfo">Здесь появятся файлы и папки, отмеченные звёздочкой</div>'
+    : !items.length ? '<div class="tinfo">Ничего не найдено</div>'
+    : items.map((i, k) =>
+    `<div class="row frow" data-k="${k}"><div class="ic">${i.d ? FOLDER : fileSvg(kindOf(i.n))}${grid ? star(k) : ''}</div>` +
+    `<div class="nm">${esc(i.n)}<small>${esc(['Файлы', ...(dirOf(i.p) ? dirOf(i.p).split('/') : [])].join(' › '))}</small></div>` +
+    `<div class="dt">${i.m ? fmtDate(i.m) : ''}</div><div class="sz">${i.d ? '' : fmtSize(i.s)}</div>` +
+    `<span class="fact">` + (i.d ? `<button data-z="${k}" title="Скачать папку (ZIP)">${ico('download')}</button>` : `<button data-dl="${k}" title="Скачать">${ico('download')}</button>`) +
+    (grid ? '' : star(k)) + `</span>` +
+    `<button class="icon more" tabindex="-1" aria-hidden="true">${ico('kebab')}</button></div>`).join('');
+  favPanel._items = items;
+}
+$('#filter').addEventListener('input', () => { if (mode === 'fav') favDraw(); });
+$('#viewBtn').addEventListener('click', () => { if (mode === 'fav') favDraw(); });
+{
+  const baseSelectSort = selectSort;
+  selectSort = function (k) { baseSelectSort(k); if (mode === 'fav') favDraw(); };
+}
+function favHide() {
+  if (favPanel.hidden) return;
+  favPanel.hidden = true; navFav.classList.remove('active');
+  // вернуть подсветку текущему разделу (как в load() из app.js)
+  for (const [m, id] of [['files', 'navFiles'], ['photos', 'navPhotos'], ['trash', 'navTrash'], ['history', 'navHistory']]) { const n = $('#' + id); if (n) n.classList.toggle('active', m === mode); }
+  updateFab();
+}
+navFav.addEventListener('click', e => {
+  e.preventDefault(); e.stopPropagation();
+  if (location.hash === '#fav') favShow(); else location.hash = '#fav';   // раздел в адресе: #fav переживает обновление страницы
+});
+// «Избранное» как отдельный раздел #fav (переопределяет load() из app.js)
+{
+  const baseLoad = load;
+  load = async function () {
+    if (location.hash !== '#fav') return baseLoad();
+    mode = 'fav'; sel = new Set();
+    document.body.className = 'mode-fav';
+    ['#list', '#photos', '#trashv', '#histv', '#empty', '#cal', '#ptop', '#pbub'].forEach(x => { const n = $(x); if (n) n.hidden = true; });
+    $('#topx').innerHTML = ''; $('#crumbs').innerHTML = '<a>Избранное</a>';
+    document.title = 'Избранное — Диск';
+    favPanel.hidden = false; qa('#side .navitem').forEach(n => n.classList.toggle('active', n === navFav));
+    updateFab(); treeRender();
+    await favShow();
+  };
+}
 $('#side').addEventListener('click', e => { if (e.target.closest('a, .navitem') && !e.target.closest('#navFav')) favHide(); }, true);
-addEventListener('hashchange', favHide);
+addEventListener('hashchange', () => { if (location.hash !== '#fav') favHide(); });
 favPanel.addEventListener('click', async e => {
   const items = favPanel._items || [], g = a => e.target.closest(`[${a}]`);
   let x;
@@ -770,8 +848,17 @@ favPanel.addEventListener('click', async e => {
   const row = e.target.closest('.frow'); if (!row) return;
   const it = items[+row.dataset.k];
   if (it.d) { favHide(); location.hash = hashFor(it.p); }
-  else { favHide(); vlist.length = 0; vlist.push({n: it.n, p: it.p, s: it.s}); vi = 0; $('#viewer').hidden = false; showV(); }
+  else {
+    // панель «Избранное» не закрываем: просмотрщик открывается поверх неё, после закрытия возвращаемся в «Избранное»
+    vlist.length = 0; vlist.push({n: it.n, p: it.p, s: it.s}); vi = 0;
+    $('#viewer').classList.add('overfav'); $('#viewer').hidden = false; showV();
+  }
 });
+// после закрытия просмотрщика, открытого из «Избранного», — обновить список (файл могли удалить, переименовать, переместить)
+new MutationObserver(() => {
+  const v = $('#viewer');
+  if (v.hidden && v.classList.contains('overfav')) { v.classList.remove('overfav'); if (!favPanel.hidden) favShow(); }
+}).observe($('#viewer'), {attributes: true, attributeFilter: ['hidden']});
 
 {
   const baseUF = updateFab;
@@ -781,4 +868,205 @@ favPanel.addEventListener('click', async e => {
 }
 updateFab();
 favLoad().then(markFavs);
+
+/* ===== Выбор элементов чекбоксами + панель действий над выбранным ===== */
+document.head.append(Object.assign(document.createElement('style'), {textContent: `
+/* чекбокс: в списке — квадрат 20px слева от иконки; в плитке — в круглой подложке 32px в правом нижнем углу */
+#list .row .ck { flex: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity .12s; }
+#list .row .ck .bx { width: 20px; height: 20px; border-radius: 5px; border: 2px solid #8e8e99; background: rgba(20, 20, 24, .55); box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; transition: background .12s, border-color .12s; }
+#list .row .ck svg { width: 13px; height: 13px; opacity: 0; }
+#list .row .ck:hover .bx { border-color: #fff; }
+#list .row .ck[aria-checked=true] .bx { background: #0a84ff; border-color: #0a84ff; }
+#list .row .ck[aria-checked=true] svg { opacity: 1; }
+#list .row:hover .ck, #list .row .ck[aria-checked=true], #list.selon .row .ck { opacity: 1; }
+#list:not(.grid) .row .ck { margin-right: -8px; }
+#list.grid .row .ic > .ck { position: absolute; right: 4px; bottom: 4px; z-index: 3; width: 32px; height: 32px; border-radius: 50%; background: rgba(32, 32, 38, .82); }
+#list.grid .row .ic > .ck .bx { width: 18px; height: 18px; }
+#list.grid .row .ic.vid .pv { right: auto; bottom: auto; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 34px; height: 34px; }
+#list.grid .row .ic.vid .pv .ic-svg { width: 16px; height: 16px; }
+@media (hover: none) { #list .row .ck { opacity: 1; } }
+#top.lockh { box-sizing: border-box; }
+#selBar { display: none; align-items: center; gap: 4px; margin-left: auto; }
+#top.selon #selBar { display: flex; }
+#top.selon > #filter, #top.selon > #sort, #top.selon > #sortBtn, #top.selon > #viewBtn { display: none !important; }
+#selBar .cnt { color: #cfcfd8; font-size: 14px; margin-right: 8px; white-space: nowrap; }
+#selBar button { width: 38px; height: 38px; border: 0; border-radius: 10px; background: #2a2a31; color: #e6e6ea; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+#selBar button:hover { background: #35353d; color: #fff; }
+#selBar button .ic-svg { width: 20px; height: 20px; }
+#selBar button.danger { color: #ff6b6b; }
+#selBar button.danger:hover { background: #4a2a2e; color: #ff8a8a; }
+`}));
+{
+  const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  const top = $('#top'), list = $('#list');
+  const bar = document.createElement('div'); bar.id = 'selBar';
+  bar.innerHTML = `<span class="cnt"></span>` +
+    `<button data-sa="dl" title="Скачать">${ico('download')}</button>` +
+    `<button data-sa="move" title="Переместить">${ico('move')}</button>` +
+    `<button data-sa="del" class="danger" title="Удалить">${ico('trash')}</button>` +
+    `<button data-sa="cancel" title="Отменить выбор">${ico('close')}</button>`;
+  top.append(bar);
+  const cntTxt = n => { const a = n % 10, b = n % 100; return 'Выбрано: ' + n + ' ' + (a === 1 && b !== 11 ? 'объект' : a >= 2 && a <= 4 && (b < 12 || b > 14) ? 'объекта' : 'объектов'); };
+
+  let busy = false;
+  function syncSel() {
+    if (busy) return; busy = true;
+    try {
+      const on = mode === 'files' && favPanel.hidden && sel.size > 0;
+      const grid = list.classList.contains('grid');
+      if (on && !top.classList.contains('selon')) { top.style.height = top.offsetHeight + 'px'; top.classList.add('lockh'); }
+      if (!on && top.classList.contains('selon')) { top.style.height = ''; top.classList.remove('lockh'); }
+      list.classList.toggle('selon', on);
+      top.classList.toggle('selon', on);
+      if (on) bar.querySelector('.cnt').textContent = cntTxt(sel.size);
+      if (mode !== 'files') return;
+      if ([...list.querySelectorAll('.row[data-i]')].some(r => !r.querySelector('[data-fa=star]'))) { try { markFavs(); } catch (_) {} }
+      list.querySelectorAll('.row[data-i]').forEach(r => {
+        const it = L[+r.dataset.i]; if (!it) return;
+        let ck = r.querySelector('.ck');
+        const ic = r.querySelector('.ic');
+        if (!ck) {
+          ck = document.createElement('span'); ck.className = 'ck'; ck.setAttribute('role', 'checkbox'); ck.title = 'Выбрать'; ck.innerHTML = '<span class="bx">' + CHECK + '</span>';
+        }
+        if (grid && ic && ck.parentNode !== ic) ic.append(ck);
+        else if (!grid && ic && ck.nextSibling !== ic) ic.before(ck);
+        const v = sel.has(it.n) ? 'true' : 'false';
+        if (ck.getAttribute('aria-checked') !== v) ck.setAttribute('aria-checked', v);
+      });
+    } finally { busy = false; }
+  }
+  let q = 0;
+  const later = () => { if (!q) q = requestAnimationFrame(() => { q = 0; syncSel(); }); };
+  new MutationObserver(later).observe(list, {childList: true, subtree: true, attributes: true, attributeFilter: ['class']});
+  addEventListener('hashchange', later);
+  document.addEventListener('click', later);
+
+  // клик по чекбоксу — только выбор, без открытия
+  list.addEventListener('click', e => {
+    const ck = e.target.closest('.ck'); if (!ck) return;
+    e.stopPropagation(); e.preventDefault();
+    const r = ck.closest('.row[data-i]'), it = r && L[+r.dataset.i]; if (!it) return;
+    sel.has(it.n) ? sel.delete(it.n) : sel.add(it.n);
+    markSel(); syncSel();
+  }, true);
+  list.addEventListener('contextmenu', e => { if (e.target.closest('.ck')) { e.preventDefault(); e.stopPropagation(); } }, true);
+
+  const clearSel = () => { sel = new Set(); markSel(); syncSel(); };
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  bar.addEventListener('click', async e => {
+    const b = e.target.closest('[data-sa]'); if (!b) return;
+    e.stopPropagation();
+    const ts = targetsOf(); if (!ts.length && b.dataset.sa !== 'cancel') return clearSel();
+    switch (b.dataset.sa) {
+      case 'dl':
+        for (let i = 0; i < ts.length; i++) {
+          if (i) await wait(700);
+          if (ts[i].d) zipDownload(ts[i].p); else dlFile(fileUrl(ts[i].p, true));
+        }
+        break;
+      case 'move': await doMove(ts); break;
+      case 'del': await doDelete(ts); break;
+      case 'cancel': clearSel(); break;
+    }
+    later();
+  });
+}
 } catch (err) { console.error('favorites addon failed:', err); }
+
+/* ===== Просмотр Word (docx) и Excel (xlsx/xls/ods) в браузере =====
+   Отключается в config.php: 'office_view' => false.
+   Документ отрисовывается локальными библиотеками из vendor/ и показывается
+   в iframe с sandbox — скрипты из документа не выполняются, стили не влияют на страницу. */
+const OFFICE_ON = (document.querySelector('meta[name=office]') || {}).content !== '0';
+const OFF_WORD = new Set(['docx', 'docm', 'dotx']);
+const OFF_XLS = new Set(['xlsx', 'xlsm', 'xlsb', 'xls', 'ods']);
+const OFF_MAX = 50 * 1024 * 1024;     // больше 50 МБ — не открываем, предлагаем скачать
+const OFF_ROWS = 2000;                // строк на лист Excel
+if (OFFICE_ON) [...OFF_WORD, ...OFF_XLS].forEach(e => TXT.add(e));  // чтобы клик открывал просмотрщик и работали ← →
+
+document.head.append(Object.assign(document.createElement('style'), {textContent: `
+#vbody .offv { width: 100%; height: 100%; display: flex; flex-direction: column; min-height: 0; }
+#vbody .offv iframe { flex: 1; width: 100%; height: auto; min-height: 0; border: 0; border-radius: 8px; background: #fff; }
+#vbody .offtabs { display: flex; gap: 4px; overflow-x: auto; padding: 0 0 8px; flex: none; }
+#vbody .offtabs button { flex: none; border: 0; border-radius: 8px; padding: 6px 12px; background: #2a2a31; color: #cfcfd8; font-size: 13px; cursor: pointer; white-space: nowrap; }
+#vbody .offtabs button:hover { background: #35353d; color: #fff; }
+#vbody .offtabs button.on { background: #0a84ff; color: #fff; }
+#vbody .offnote { color: #8e8e99; font-size: 13px; padding: 6px 2px 0; flex: none; }
+#vbody .offmsg { color: #cfcfd8; text-align: center; font-size: 15px; line-height: 1.6; }
+#vbody .offmsg a { color: #0a84ff; }
+`}));
+
+const loadJs = (() => {
+  const done = {};
+  return src => done[src] || (done[src] = new Promise((ok, bad) => {
+    const s = document.createElement('script'); s.src = src;
+    s.onload = ok; s.onerror = () => { delete done[src]; bad(new Error('Не удалось загрузить ' + src)); };
+    document.head.append(s);
+  }));
+})();
+
+const offFrame = (html, css) => {
+  const f = document.createElement('iframe');
+  f.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
+  f.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><base target="_blank"><style>${css || ''}</style></head><body>${html}</body></html>`;
+  return f;
+};
+const OFF_XLS_CSS = `body{margin:0;font:13px/1.4 Calibri,Arial,sans-serif;color:#111;background:#fff}
+table{border-collapse:collapse;margin:0}td,th{border:1px solid #d4d4d8;padding:3px 6px;white-space:nowrap;vertical-align:top}
+tr:first-child td{background:#f3f4f6;font-weight:600;position:sticky;top:0}`;
+
+async function showOffice(it, p, e, b, tok) {
+  const msg = h => { b.innerHTML = `<div class="offmsg">${h}</div>`; };
+  const dl = `<a href="${fileUrl(p, true)}">Скачать файл</a>`;
+  if (it.s != null && it.s > OFF_MAX) return msg(`Файл слишком большой для просмотра в браузере (${fmtSize(it.s)}).<br>${dl}`);
+  msg('Открываю документ…');
+  try {
+    const word = OFF_WORD.has(e);
+    const libs = word ? ['vendor/jszip.min.js?v=3.10.2', 'vendor/docx-preview.min.js?v=0.4.1'] : ['vendor/xlsx.full.min.js?v=0.20.3'];
+    for (const s of libs) await loadJs(s);
+    const r = await fetch(fileUrl(p));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const buf = await r.arrayBuffer();
+    if (tok !== vTok) return;
+    if (buf.byteLength > OFF_MAX) return msg(`Файл слишком большой для просмотра в браузере.<br>${dl}`);
+    const box = document.createElement('div'); box.className = 'offv';
+
+    if (word) {
+      const tmp = document.createElement('div');
+      tmp.style.cssText = 'position:fixed;left:-20000px;top:0;width:1200px';
+      document.body.append(tmp);
+      try {
+        await docx.renderAsync(buf, tmp, tmp, {inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true, useBase64URL: true, renderHeaders: true, renderFooters: true, renderFootnotes: true, renderEndnotes: true});
+        if (tok !== vTok) return;
+        box.append(offFrame(tmp.innerHTML, 'body{margin:0;background:#808080}'));
+      } finally { tmp.remove(); }
+    } else {
+      const wb = XLSX.read(buf, {type: 'array', sheetRows: OFF_ROWS + 1, cellDates: true});
+      if (tok !== vTok) return;
+      const tabs = document.createElement('div'); tabs.className = 'offtabs';
+      const note = document.createElement('div'); note.className = 'offnote';
+      let frame = null;
+      const show = i => {
+        const ws = wb.Sheets[wb.SheetNames[i]];
+        const html = ws && ws['!ref'] ? XLSX.utils.sheet_to_html(ws, {header: '', footer: ''}) : '<p style="padding:12px;color:#666">Лист пуст</p>';
+        const f = offFrame(html, OFF_XLS_CSS);
+        frame ? frame.replaceWith(f) : tabs.after(f); frame = f;
+        tabs.querySelectorAll('button').forEach((x, k) => x.classList.toggle('on', k === i));
+        const full = ws && ws['!fullref'], cut = full && full !== ws['!ref'];
+        note.textContent = cut ? `Показаны первые ${OFF_ROWS} строк. Полностью — в Excel.` : '';
+        note.hidden = !cut;
+      };
+      wb.SheetNames.forEach((n, i) => {
+        const x = document.createElement('button'); x.textContent = n; x.onclick = () => show(i); tabs.append(x);
+      });
+      tabs.hidden = wb.SheetNames.length < 2;
+      box.append(tabs);
+      show(0);
+      box.append(note);
+    }
+    b.innerHTML = ''; b.append(box);
+  } catch (err) {
+    console.error('office view', err);
+    if (tok === vTok) msg(`Не удалось показать документ.<br>${dl}`);
+  }
+}

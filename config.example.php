@@ -28,4 +28,7 @@ return [
     'photo_exclude'  => ['node_modules', 'cache'], // имена папок, которые пропускать
     'photo_min_size' => 30720,                     // файлы меньше 30 КБ не считать фото
     'heic_exif'      => true,                      // дата съёмки HEIC через magick identify -ping
+
+    // Просмотр Word (docx) и Excel (xlsx, xls, ods) в браузере; false — отключить
+    'office_view' => true,
 ];

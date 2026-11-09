@@ -52,6 +52,29 @@ try {
         }
         json_out(['path' => $rel, 'items' => $items]);
 
+    case 'dirs':
+        // только подпапки + признак h: есть ли внутри хотя бы одна подпапка (для шеврона в дереве)
+        [$full, $rel] = resolve((string)($_GET['p'] ?? ''));
+        if (!is_dir($full)) json_out(['error' => 'not a dir'], 400);
+        $dirs = [];
+        foreach (scandir($full) ?: [] as $n) {
+            if ($n === '.' || $n === '..' || is_hidden($n)) continue;
+            $f = $full . '\\' . $n;
+            if (!is_dir($f)) continue;
+            $h = false;
+            if ($dh = @opendir($f)) {
+                $seen = 0;
+                while (($c = readdir($dh)) !== false) {
+                    if ($c === '.' || $c === '..' || is_hidden($c)) continue;
+                    if (is_dir($f . '\\' . $c)) { $h = true; break; }
+                    if (++$seen >= 5000) { $h = true; break; } // очень большая папка — не перебираем до конца
+                }
+                closedir($dh);
+            }
+            $dirs[] = ['n' => $n, 'h' => $h];
+        }
+        json_out(['path' => $rel, 'dirs' => $dirs]);
+
     case 'space':
         $r = root();
         json_out(['free' => (float)@disk_free_space($r), 'total' => (float)@disk_total_space($r)]);

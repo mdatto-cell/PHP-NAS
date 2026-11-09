@@ -6,6 +6,7 @@ boot('page');
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="csrf" content="<?= htmlspecialchars($_SESSION['csrf']) ?>">
 <meta name="user" content="<?= htmlspecialchars($_SESSION['u']) ?>">
+<meta name="office" content="<?= cfg('office_view') === false ? '0' : '1' ?>">
 <title>Диск</title>
 <link rel="stylesheet" href="style.css?v=4"><link rel="stylesheet" href="photos.css?v=4"><link rel="stylesheet" href="ui2.css?v=4"><link rel="stylesheet" href="ui3.css?v=4"></head>
 <body>
@@ -57,6 +58,6 @@ boot('page');
 <script src="app.js?v=4"></script>
 <script src="photos.js?v=4"></script>
 <script src="trash.js?v=4"></script>
-<script src="viewer.js?v=1"></script>
+<script src="viewer.js?v=9"></script>
 <script>load();</script>
 </body></html>
