@@ -31,4 +31,12 @@ return [
 
     // Просмотр Word (docx) и Excel (xlsx, xls, ods) в браузере; false — отключить
     'office_view' => true,
+
+    // «Поделиться» — публичные ссылки на скачивание файла или папки (ZIP).
+    // По умолчанию выключено: без 'share' => true раздел и пункты меню не показываются, share.php отвечает 404.
+    'share' => false,
+    // Адрес share.php для формирования ссылок в интерфейсе:
+    //   ''  — share.php этого же сайта (NAS в локальной сети или весь сайт опубликован через nginx);
+    //   'https://files.example.com/share.php' — внешний адрес (отдельный DocumentRoot/порт или location в nginx).
+    'share_url' => '',
 ];

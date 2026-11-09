@@ -68,6 +68,7 @@ document.head.append(Object.assign(document.createElement('style'), {textContent
 #fabUp:hover { background: #1a85ff; transform: translateY(-1px); }
 #fabUp:active { transform: translateY(0); }
 #fabUp[hidden] { display: none !important; }
+#menu { z-index: 45; }   /* меню поверх кнопки «Загрузить» */
 @media (max-width: 600px) {
   #fabUp { right: 20px; bottom: 20px; height: 44px; padding: 0 22px; font-size: 15px; }
 }
@@ -412,7 +413,13 @@ dirInput.setAttribute('webkitdirectory', ''); document.body.append(dirInput);
 // контекстное меню с подсказками клавиш (4-й элемент пункта)
 function popMenu(e, acts) {
   if (e.preventDefault) e.preventDefault();
-  const m = $('#menu'); m.innerHTML = '';
+  const m = $('#menu');
+  // повторное нажатие на ту же кнопку («⋮», ссылка, «Создать или загрузить») закрывает меню
+  const opener = (e.target && e.target.closest) ? e.target.closest('button, .more, #newBar') : null;
+  const rclick = typeof MouseEvent !== 'undefined' && e instanceof MouseEvent && e.type === 'contextmenu';
+  if (!rclick && opener && !m.hidden && m._opener === opener) { m.hidden = true; m._opener = null; if (e.stopPropagation) e.stopPropagation(); return; }
+  m._opener = rclick ? null : opener;
+  m.innerHTML = '';
   acts.forEach(a => {
     if (a === '-') { m.append(document.createElement('hr')); return; }
     const d = document.createElement('div');
@@ -424,8 +431,19 @@ function popMenu(e, acts) {
   m.hidden = false;
   const ctx = e.type === 'contextmenu', r = (e.target.closest('button') || e.target).getBoundingClientRect();
   const x = ctx ? e.clientX : r.left, y = ctx ? e.clientY : r.bottom;
-  m.style.left = Math.max(8, Math.min(x, innerWidth - m.offsetWidth - 8)) + 'px';
-  m.style.top = Math.max(8, Math.min(y, innerHeight - m.offsetHeight - 8)) + 'px';
+  // если снизу не помещается — открыть над кнопкой, а не поверх неё (иначе повторно нажать «⋮» нельзя)
+  const place = () => {
+    const h = m.offsetHeight, w = m.offsetWidth;
+    let top = y, left = x;
+    if (!ctx && y + h > innerHeight - 8) {
+      if (r.top - h >= 8) top = r.top - h;                     // над кнопкой
+      else left = r.left - w - 6 >= 8 ? r.left - w - 6 : r.right + 6;   // нигде не помещается по высоте — сбоку от кнопки
+    }
+    m.style.left = Math.max(8, Math.min(left, innerWidth - w - 8)) + 'px';
+    m.style.top = Math.max(8, Math.min(top, innerHeight - h - 8)) + 'px';
+  };
+  place();
+  requestAnimationFrame(() => { if (!m.hidden) place(); });   // пункты «Избранное»/«Поделиться» добавляются чуть позже
   e.stopPropagation();
 }
 
@@ -480,7 +498,9 @@ function updateFab() {
 // При клике на синюю кнопку всплывает меню над ней: «Загрузить папку» и «Загрузить файлы»
 fab.addEventListener('click', e => {
   const acts = UPLOAD_ONLY_ACTS();
-  const m = $('#menu'); m.innerHTML = '';
+  const m = $('#menu');
+  if (!m.hidden && m._opener === fab) { m.hidden = true; m._opener = null; e.stopPropagation(); return; }   // повторное нажатие закрывает
+  m._opener = fab; m.innerHTML = '';
   acts.forEach(a => {
     const d = document.createElement('div');
     d.innerHTML = (a[2] ? ico(a[2]) : '') + `<span>${esc(a[0])}</span>` + (a[3] ? `<kbd>${esc(a[3])}</kbd>` : '');
@@ -777,7 +797,7 @@ const favPanel = document.createElement('section'); favPanel.id = 'favv'; favPan
 ($('#histv') ? $('#histv').after(favPanel) : $('#main').append(favPanel));
 const navFav = document.createElement('a');
 navFav.id = 'navFav'; navFav.className = 'navitem'; navFav.href = '#fav'; navFav.innerHTML = ico('star') + '<span>Избранное</span>';
-(document.getElementById('ftree') || document.getElementById('navFiles')).after(navFav);
+(document.getElementById('navPhotos') || document.getElementById('ftree') || document.getElementById('navFiles')).after(navFav);   // порядок: Файлы, Галерея, Избранное
 async function favShow() {
   favPanel.hidden = false; fab.hidden = true;
   qa('#side .navitem').forEach(n => n.classList.toggle('active', n === navFav));

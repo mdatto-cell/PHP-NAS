@@ -226,11 +226,13 @@ function render() {
 }
 const markSel = () => document.querySelectorAll('#list .row').forEach(r => r.classList.toggle('sel', sel.has(L[+r.dataset.i].n)));
 const targetsOf = () => L.filter(i => sel.has(i.n)).map(it => ({p: join(cwd, it.n), n: it.n, d: it.d, it}));
+const menuTargets = it => sel.has(it.n) ? targetsOf() : [{p: join(cwd, it.n), n: it.n, d: it.d, it}];
 
 $('#list').addEventListener('click', e => {
   const row = e.target.closest('.row'); if (!row) return;
   const it = L[+row.dataset.i];
-  if (e.target.closest('.more')) { sel = new Set([it.n]); markSel(); return popMenu(e, menuFor(targetsOf())); }
+  // «⋮» не меняет выбор: меню для всех выбранных, если объект среди них, иначе только для этого объекта
+  if (e.target.closest('.more')) return popMenu(e, menuFor(menuTargets(it)));
   if (e.ctrlKey || e.metaKey) { sel.has(it.n) ? sel.delete(it.n) : sel.add(it.n); return markSel(); }
   if (sel.size) { sel = new Set(); markSel(); }
   openIt(it);
@@ -238,8 +240,7 @@ $('#list').addEventListener('click', e => {
 $('#list').addEventListener('contextmenu', e => {
   const row = e.target.closest('.row'); if (!row) return;
   const it = L[+row.dataset.i];
-  if (!sel.has(it.n)) { sel = new Set([it.n]); markSel(); }
-  popMenu(e, menuFor(targetsOf()));
+  popMenu(e, menuFor(menuTargets(it)));
 });
 
 function openIt(it) {

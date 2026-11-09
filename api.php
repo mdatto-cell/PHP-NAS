@@ -31,7 +31,8 @@ function fav_remove(string $rel): void {
 
 $a = $_GET['a'] ?? '';
 // изменяющие действия только через POST (а значит, только с CSRF-токеном)
-$MUT = ['mkdir', 'rename', 'delete', 'move', 'copy', 'restore', 'purge', 'empty', 'fav_add', 'fav_del'];
+$MUT = ['mkdir', 'rename', 'delete', 'move', 'copy', 'restore', 'purge', 'empty', 'fav_add', 'fav_del', 'share_add', 'share_del'];
+if (is_string($a) && str_starts_with($a, 'share_') && cfg('share') !== true) json_out(['error' => 'Общий доступ отключён (share в config.php)'], 403);
 if (in_array($a, $MUT, true) && $_SERVER['REQUEST_METHOD'] !== 'POST') json_out(['error' => 'method not allowed'], 405);
 try {
     $in = [];
@@ -99,7 +100,7 @@ try {
         $old = basename($src); $isDir = is_dir($src);
         if (!rename($src, $t)) json_out(['error' => 'Не удалось переименовать'], 500);
         $trel = rel_of($t);
-        idx_move($rel, $trel); fav_move($rel, $trel);
+        idx_move($rel, $trel); fav_move($rel, $trel); share_move($rel, $trel);
         ev('rename', $rel, $trel, $old, $isDir ? 'd' : 'f');
         json_out(['ok' => true]);
 
@@ -109,7 +110,7 @@ try {
             [$src, $rel] = resolve($p);
             if ($rel === '') continue;
             $isDir = is_dir($src); $nm = basename($src);
-            if (trash_put($src, $rel)) { fav_remove($rel); ev('delete', $rel, '', $nm, $isDir ? 'd' : 'f'); $n++; } else $fail++;
+            if (trash_put($src, $rel)) { fav_remove($rel); share_remove($rel); ev('delete', $rel, '', $nm, $isDir ? 'd' : 'f'); $n++; } else $fail++;
         }
         json_out(['ok' => $fail === 0, 'n' => $n, 'errors' => $fail ? ["Не удалось удалить объектов: $fail"] : []]);
 
@@ -128,7 +129,7 @@ try {
             $trel = rel_of($t);
             if ($a === 'move') {
                 if (!@rename($src, $t)) { $errs[] = "«$nm»: не удалось переместить"; continue; }
-                idx_move($rel, $trel); fav_move($rel, $trel);
+                idx_move($rel, $trel); fav_move($rel, $trel); share_move($rel, $trel);
                 ev('move', $rel, $trel, $nm, $isDir ? 'd' : 'f');
             } else {
                 if (!copy_tree($src, $t)) {
@@ -179,6 +180,43 @@ try {
     case 'fav_del':
         foreach (items_arg($in) as $p) { $rel = clean_rel($p); fav_db()->prepare('DELETE FROM fav WHERE path = ?')->execute([$rel]); }
         json_out(['ok' => true]);
+
+    case 'share_list':
+        $db = app_db(); $out = [];
+        foreach ($db->query('SELECT token,path,once,ts,hits,last FROM share ORDER BY ts DESC')->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            try { [$full, $rel] = resolve($r['path']); } catch (Throwable $e) { share_remove($r['path']); continue; }
+            $d = is_dir($full);
+            $out[] = ['t' => $r['token'], 'p' => $rel, 'n' => basename($full), 'd' => $d, 's' => $d ? 0 : (int)@filesize($full), 'm' => (int)@filemtime($full),
+                      'once' => (bool)$r['once'], 'ts' => (int)$r['ts'], 'hits' => (int)$r['hits'], 'last' => (int)($r['last'] ?? 0)];
+        }
+        json_out(['items' => $out]);
+
+    case 'share_add':
+        [$full, $rel] = resolve((string)($in['p'] ?? ''));
+        if ($rel === '') json_out(['error' => 'Нельзя открыть доступ ко всему диску'], 400);
+        $db = app_db();
+        $s = $db->prepare('SELECT token,once FROM share WHERE path = ?'); $s->execute([$rel]);
+        if ($r = $s->fetch(PDO::FETCH_ASSOC)) json_out(['ok' => true, 't' => $r['token'], 'once' => (bool)$r['once'], 'existed' => true]);
+        $tok = bin2hex(random_bytes(16)); $once = !empty($in['once']); $isDir = is_dir($full);
+        $db->prepare('INSERT INTO share(token,path,dir,once,user,ts) VALUES(?,?,?,?,?,?)')
+           ->execute([$tok, $rel, $isDir ? 1 : 0, $once ? 1 : 0, $_SESSION['u'] ?? '', time()]);
+        ev('share', $rel, '', basename($full), $isDir ? 'd' : 'f');
+        json_out(['ok' => true, 't' => $tok, 'once' => $once]);
+
+    case 'share_del':
+        $db = app_db();
+        if (!empty($in['all'])) $rows = $db->query('SELECT token,path,dir FROM share')->fetchAll(PDO::FETCH_ASSOC);
+        else {
+            $tok = array_values(array_filter(items_arg(['items' => $in['tokens'] ?? []]), fn($t) => (bool)preg_match('/^[a-f0-9]{32}$/', $t)));
+            if (!$tok) json_out(['ok' => true, 'n' => 0]);
+            $s = $db->prepare('SELECT token,path,dir FROM share WHERE token IN (' . implode(',', array_fill(0, count($tok), '?')) . ')');
+            $s->execute($tok); $rows = $s->fetchAll(PDO::FETCH_ASSOC);
+        }
+        $del = $db->prepare('DELETE FROM share WHERE token = ?');
+        foreach ($rows as $r) $del->execute([$r['token']]);
+        if (count($rows) === 1) ev('unshare', $rows[0]['path'], '', basename($rows[0]['path']), $rows[0]['dir'] ? 'd' : 'f');
+        elseif ($rows) ev('unshare', '', '', '', 'f', count($rows));
+        json_out(['ok' => true, 'n' => count($rows)]);
 
     case 'history':
         $lim = max(1, min(200, (int)($_GET['limit'] ?? 100)));

@@ -7,6 +7,8 @@ boot('page');
 <meta name="csrf" content="<?= htmlspecialchars($_SESSION['csrf']) ?>">
 <meta name="user" content="<?= htmlspecialchars($_SESSION['u']) ?>">
 <meta name="office" content="<?= cfg('office_view') === false ? '0' : '1' ?>">
+<meta name="share" content="<?= cfg('share') === true ? '1' : '0' ?>">
+<meta name="share-url" content="<?= htmlspecialchars(is_string(cfg('share_url')) ? cfg('share_url') : '') ?>">
 <title>Диск</title>
 <link rel="stylesheet" href="style.css?v=4"><link rel="stylesheet" href="photos.css?v=4"><link rel="stylesheet" href="ui2.css?v=4"><link rel="stylesheet" href="ui3.css?v=4"></head>
 <body>
@@ -55,9 +57,10 @@ boot('page');
 </div>
 <div id="uploads" hidden></div>
 <script src="icons.js?v=4"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 <script src="photos.js?v=4"></script>
 <script src="trash.js?v=4"></script>
-<script src="viewer.js?v=9"></script>
+<script src="viewer.js?v=12"></script>
+<script src="share.js?v=2"></script>
 <script>load();</script>
 </body></html>

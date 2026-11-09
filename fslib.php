@@ -18,6 +18,9 @@ function app_db(): PDO {
             path TEXT, path2 TEXT, name TEXT, kind TEXT, n INTEGER NOT NULL DEFAULT 1, dev TEXT, ip TEXT)');
         $db->exec('CREATE TABLE IF NOT EXISTS trash(tname TEXT PRIMARY KEY, orig TEXT, name TEXT, dir INTEGER, size INTEGER, ts INTEGER, user TEXT)');
         $db->exec('CREATE TABLE IF NOT EXISTS fav(path TEXT PRIMARY KEY, dir INTEGER NOT NULL DEFAULT 0, user TEXT, ts INTEGER NOT NULL)');
+        // «Общий доступ»: одна ссылка на объект; once=1 — одноразовая (удаляется после успешного скачивания)
+        $db->exec('CREATE TABLE IF NOT EXISTS share(token TEXT PRIMARY KEY, path TEXT NOT NULL UNIQUE, dir INTEGER NOT NULL DEFAULT 0,
+            once INTEGER NOT NULL DEFAULT 1, user TEXT, ts INTEGER NOT NULL, hits INTEGER NOT NULL DEFAULT 0, last INTEGER)');
     }
     return $db;
 }
@@ -40,6 +43,24 @@ function ev(string $act, string $path = '', string $path2 = '', string $name = '
     } catch (Throwable $e) { error_log('ev: ' . $e->getMessage()); }
 }
 function like_esc(string $s): string { return addcslashes($s, '%_\\'); }
+
+/* ---------- общий доступ по ссылке ---------- */
+// при переименовании/перемещении ссылка продолжает указывать на объект
+function share_move(string $old, string $new): void {
+    try {
+        $db = app_db();
+        $db->prepare("UPDATE share SET path = ? || substr(path, ?) WHERE path LIKE ? ESCAPE '\\'")
+           ->execute([$new . '/', mb_strlen($old) + 2, like_esc($old) . '/%']);
+        $db->prepare('DELETE FROM share WHERE path = ?')->execute([$new]);
+        $db->prepare('UPDATE share SET path = ? WHERE path = ?')->execute([$new, $old]);
+    } catch (Throwable $e) { error_log('share_move: ' . $e->getMessage()); }
+}
+// при удалении объекта (в корзину) доступ к нему и ко всему внутри закрывается
+function share_remove(string $rel): void {
+    try {
+        app_db()->prepare("DELETE FROM share WHERE path = ? OR path LIKE ? ESCAPE '\\'")->execute([$rel, like_esc($rel) . '/%']);
+    } catch (Throwable $e) { error_log('share_remove: ' . $e->getMessage()); }
+}
 
 /* ---------- индекс фото ---------- */
 function idx_remove(string $rel): void {
