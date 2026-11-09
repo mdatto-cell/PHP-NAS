@@ -26,7 +26,14 @@ document.head.append(Object.assign(document.createElement('style'), {textContent
 #vmeta { flex: 1; min-width: 0; text-align: center; color: #9a9aa6; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 16px; }
 #vmeta a { color: #cfcfd8; cursor: pointer; text-decoration: none; }
 #vmeta a:hover { text-decoration: underline; }
+/* телефон: кнопки в первой строке, имя и путь — под ними */
+@media (max-width: 600px) {
+  .vbar { flex-wrap: wrap; justify-content: flex-end; gap: 2px; row-gap: 2px; }
+  #vname { order: 1; flex: 1 1 100%; max-width: none; padding: 0 6px; }
+  #vmeta { order: 2; flex: 1 1 100%; text-align: left; padding: 0 6px; }
+}
 #vdel { color: #ff5b5b; }
+body:has(#viewer:not([hidden])) #fabUp { display: none; }   /* кнопка «Загрузить» не поверх просмотрщика */
 #vdel:hover { background: rgba(255, 91, 91, .16); }
 
 /* «Создать или загрузить»: в таблице — полоса, в плитках — плитка обычного размера */
@@ -254,7 +261,7 @@ sorted = function() {
       const be = $('#btnEmpty'); if (be) be.style.display = T.items.length ? '' : 'none';   // «Очистить корзину» — только если есть что очищать
       if (!T.items.length) { el.innerHTML = '<div class="tinfo">Корзина пуста</div>'; return; }
       if (!T.L.length) { el.innerHTML = '<div class="tinfo">Ничего не найдено</div>'; return; }
-      el.innerHTML = T.L.map((it, i) => `<div class="row trow${T.sel.has(it.id) ? ' sel' : ''}" data-i="${i}"><div class="ic">${it.d ? FOLDER : fileSvg(kindOf(it.name))}</div>` +
+      el.innerHTML = T.L.map((it, i) => `<div class="row trow${T.sel.has(it.id) ? ' sel' : ''}" data-i="${i}">${rowIcon({n: it.name, d: it.d}, '', '', 'thumb.php?t=' + enc(it.id) + '&w=320')}` +
           `<div class="nm">${esc(it.name)}<small>${it.orig ? 'из: ' + esc(dirOf(it.orig) || 'Файлы') : 'исходное место неизвестно'}</small></div>` +
           `<div class="dt">${fmtDate(it.t)}</div><div class="sz">${it.d ? '' : fmtSize(it.s)}</div><button class="icon more">${ico('kebab')}</button></div>`).join('');
     };
@@ -561,6 +568,7 @@ dirInput.onchange = async e => {
 /* ===== Просмотрщик: путь, размер, переименовать / переместить / удалить ===== */
 $('.vbar').innerHTML =
   `<span id="vname"></span><span id="vmeta"></span>` +
+  `<button id="vfav" class="icon" title="В избранное"></button>` +
   `<button id="vren" class="icon" title="Переименовать (F2)">${ico('rename')}</button>` +
   `<button id="vmove" class="icon" title="Переместить">${ico('move')}</button>` +
   `<a id="vdl" class="icon" title="Скачать">${ico('download')}</a>` +
@@ -643,6 +651,7 @@ document.addEventListener('keydown', e => {
 /* ===== Избранное, ZIP-скачивание, иконки в строках и плитках ===== */
 try {
 Object.assign(IC, {
+  selAll:   SV('<rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><path d="M8 12.2l2.8 2.8L16.2 9.5"/>'),
   star:     SV('<path d="M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8-5.3-2.8-5.3 2.8 1-5.8-4.2-4.1 5.9-.9z"/>'),
   starFill: SV('<path d="M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8-5.3-2.8-5.3 2.8 1-5.8-4.2-4.1 5.9-.9z" fill="currentColor"/>'),
   zip:      SV('<path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M12 10v6m0 0-2.5-2.5M12 16l2.5-2.5"/>'),
@@ -654,7 +663,6 @@ document.head.append(Object.assign(document.createElement('style'), {textContent
 #favv .nm small { display: block; color: var(--mut); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
 #favv .row { position: relative; }
 #favv .fact { position: absolute; right: 56px; top: 50%; transform: translateY(-50%); display: flex; gap: 2px; }
-#favv .more { visibility: hidden; }
 /* колонки как в «Файлах»: место под чекбокс слева и под кнопки «Скачать/Избранное» справа */
 #favv .row, #trashv:not(.grid) .row { padding-left: 38px; }
 #favv .row .sz, #trashv:not(.grid) .row .sz { margin-right: 84px; }
@@ -664,7 +672,9 @@ document.head.append(Object.assign(document.createElement('style'), {textContent
 #favv .fact button[data-u] { color: #ffc933; }
 #favv.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 170px)); justify-content: start; align-content: start; grid-auto-rows: max-content; gap: 8px; padding: 0 10px 30px; }
 #favv.grid .row { padding: 8px; position: relative; }
-#favv.grid .row .nm small, #favv.grid .more { display: none; }
+#favv.grid .row .nm small { display: none; }
+/* «⋮» в плитке — справа сверху, как в «Файлах» */
+#favv.grid .row .more, #sharev.grid .row .more { top: 12px; right: 12px; width: 32px; height: 32px; padding: 0; border-radius: 50%; background: rgba(32, 32, 38, .82); color: #e6e6ea; display: inline-flex; align-items: center; justify-content: center; z-index: 3; }
 #favv.grid .row .sz { margin-right: 0; }
 #favv.grid .row .ic { position: relative; }
 #favv.grid .fact { display: contents; }
@@ -708,7 +718,7 @@ document.head.append(Object.assign(document.createElement('style'), {textContent
 `}));
 
 const FAVS = new Set();
-const favPath = it => join(cwd, it.n);
+const favPath = it => it.p ?? join(cwd, it.n);   // у объектов галереи полный путь в it.p
 const qa = s => [...document.querySelectorAll(s)];
 async function favLoad() {
   try { const j = await api('fav_list', null, {}, true); FAVS.clear(); (j.items || []).forEach(i => FAVS.add(i.p)); return j.items || []; }
@@ -718,8 +728,19 @@ async function favToggle(p) {
   if (FAVS.has(p)) { await api('fav_del', {items: [p]}); FAVS.delete(p); }
   else { await api('fav_add', {items: [p]}); FAVS.add(p); }
   markFavs();
+  vMarkFav();
   if (!favPanel.hidden) favShow();
 }
+/* звёздочка в просмотрщике (Файлы, Галерея, Избранное) */
+document.head.append(Object.assign(document.createElement('style'), {textContent: `#vfav.fv { color: #ffc933; }`}));
+function vMarkFav() {
+  const b = $('#vfav'), it = vlist[vi]; if (!b || !it) return;
+  const on = FAVS.has(vPath(it));
+  b.classList.toggle('fv', on); b.innerHTML = ico(on ? 'starFill' : 'star');
+  b.title = on ? 'Убрать из избранного' : 'В избранное';
+}
+$('#vfav').onclick = async () => { const it = vlist[vi]; if (it) { try { await favToggle(vPath(it)); } catch (_) {} } };
+{ const baseShowV = showV; showV = function () { const r = baseShowV.apply(this, arguments); vMarkFav(); return r; }; }
 function dlFile(url) { const a = document.createElement('a'); a.href = url; a.download = ''; document.body.append(a); a.click(); a.remove(); }
 function zipDownload(p) { dlFile('download.php?p=' + enc(p)); }
 
@@ -766,12 +787,25 @@ document.getElementById('list').addEventListener('click', e => {
 }
 
 let favTarget = null;
-document.addEventListener('contextmenu', e => { favTarget = null; const r = e.target.closest('#list [data-i]'); if (r && mode === 'files') { try { favTarget = sorted()[+r.dataset.i]; } catch (_) {} } }, true);
+document.addEventListener('contextmenu', e => {
+  favTarget = null;
+  const r = e.target.closest('#list [data-i]'); if (r && mode === 'files') { try { favTarget = sorted()[+r.dataset.i]; } catch (_) {} }
+  const t = e.target.closest('#pgrid .pt'); if (t && mode === 'photos' && typeof P !== 'undefined') { const it = P.items[+t.dataset.i]; if (it) favTarget = {n: it.n, p: it.p, d: false}; }   // галерея
+  if (!e.target.closest('.ck')) favTarget = favTarget || secTarget(e);
+}, true);
 document.addEventListener('click', e => {
   favTarget = null;
   const r = e.target.closest('#list [data-i]');
   if (r && mode === 'files' && e.target.closest('.more')) { try { favTarget = sorted()[+r.dataset.i]; } catch (_) {} }
+  if (e.target.closest('#favv .more, #sharev .more')) favTarget = secTarget(e);
 }, true);
+// «Общий доступ»: объект строки для пунктов «В избранное» (меню для нескольких выбранных — без них)
+function secTarget(e) {
+  const r = e.target.closest('#sharev .srow'); if (!r || mode !== 'shares') return null;
+  const it = ($('#sharev')._items || [])[+r.dataset.k]; if (!it) return null;
+  if (window.SELX && SELX.multi('shares', it)) return null;
+  return {n: it.n, p: it.p, d: it.d};
+}
 {
   const m = $('#menu'); let busy = false;
   new MutationObserver(() => {
@@ -787,7 +821,7 @@ document.addEventListener('click', e => {
     };
     const hr = document.createElement('hr'); hr.dataset.fav = '1'; m.append(hr);
     add(on ? 'Убрать из избранного' : 'В избранное', () => favToggle(p), on ? 'starFill' : 'star');
-    if (it.d) add('Скачать папку (ZIP)', () => zipDownload(p), 'zip');
+    if (it.d && !hasDl) add('Скачать папку (ZIP)', () => zipDownload(p), 'zip');
     else if (!hasDl) add('Скачать', () => dlFile(fileUrl(p, true)), 'download');
     busy = false;
   }).observe(m, {childList: true});
@@ -817,12 +851,12 @@ function favDraw() {
   favPanel.innerHTML = !all.length ? '<div class="tinfo">Здесь появятся файлы и папки, отмеченные звёздочкой</div>'
     : !items.length ? '<div class="tinfo">Ничего не найдено</div>'
     : items.map((i, k) =>
-    `<div class="row frow" data-k="${k}"><div class="ic">${i.d ? FOLDER : fileSvg(kindOf(i.n))}${grid ? star(k) : ''}</div>` +
+    `<div class="row frow" data-k="${k}">${rowIcon(i, i.p, grid ? star(k) : '')}` +
     `<div class="nm">${esc(i.n)}<small>${esc(['Файлы', ...(dirOf(i.p) ? dirOf(i.p).split('/') : [])].join(' › '))}</small></div>` +
     `<div class="dt">${i.m ? fmtDate(i.m) : ''}</div><div class="sz">${i.d ? '' : fmtSize(i.s)}</div>` +
     `<span class="fact">` + (i.d ? `<button data-z="${k}" title="Скачать папку (ZIP)">${ico('download')}</button>` : `<button data-dl="${k}" title="Скачать">${ico('download')}</button>`) +
     (grid ? '' : star(k)) + `</span>` +
-    `<button class="icon more" tabindex="-1" aria-hidden="true">${ico('kebab')}</button></div>`).join('');
+    `<button class="icon more" title="Действия">${ico('kebab')}</button></div>`).join('');
   favPanel._items = items;
 }
 $('#filter').addEventListener('input', () => { if (mode === 'fav') favDraw(); });
@@ -867,13 +901,38 @@ favPanel.addEventListener('click', async e => {
   if ((x = g('data-dl'))) { e.stopPropagation(); dlFile(fileUrl(items[+x.dataset.dl].p, true)); return; }
   const row = e.target.closest('.frow'); if (!row) return;
   const it = items[+row.dataset.k];
-  if (it.d) { favHide(); location.hash = hashFor(it.p); }
-  else {
-    // панель «Избранное» не закрываем: просмотрщик открывается поверх неё, после закрытия возвращаемся в «Избранное»
-    vlist.length = 0; vlist.push({n: it.n, p: it.p, s: it.s}); vi = 0;
-    $('#viewer').classList.add('overfav'); $('#viewer').hidden = false; showV();
-  }
+  if (e.target.closest('.more')) { e.stopPropagation(); favMenu(e, it); return; }
+  favOpen(it);
 });
+favPanel.addEventListener('contextmenu', e => {
+  const row = e.target.closest('.frow'); if (!row || e.target.closest('.ck')) return;
+  const it = (favPanel._items || [])[+row.dataset.k]; if (it) favMenu(e, it);
+});
+function favOpen(it) {
+  if (it.d) { favHide(); location.hash = hashFor(it.p); return; }
+  // панель «Избранное» не закрываем: просмотрщик открывается поверх неё, после закрытия возвращаемся в «Избранное»
+  vlist.length = 0; vlist.push({n: it.n, p: it.p, s: it.s}); vi = 0;
+  $('#viewer').classList.add('overfav'); $('#viewer').hidden = false; showV();
+}
+const showInFolder = p => { location.hash = hashFor(dirOf(p)); };
+// меню «⋮» / правой кнопки в «Избранном»: для выбранных, если объект среди них, иначе — для этого объекта
+function favMenu(e, it) {
+  const its = window.SELX ? SELX.targets('fav', it) : [it], n = its.length;
+  if (n > 1) {
+    favTarget = null;
+    return popMenu(e, [
+      [`Скачать (${n})`, () => SELX.dl(its), 'download'],
+      '-',
+      [`Убрать из избранного (${n})`, async () => { await api('fav_del', {items: its.map(i => i.p)}); SELX.clear('fav'); load(); }, 'starFill'],
+    ]);
+  }
+  favTarget = {n: it.n, p: it.p, d: it.d};   // «Убрать из избранного» и «Поделиться» добавят общие обработчики меню
+  popMenu(e, [
+    [it.d ? 'Открыть папку' : 'Открыть', () => favOpen(it), 'eye'],
+    ['Показать в папке', () => { favHide(); showInFolder(it.p); }, 'folder'],
+    it.d ? ['Скачать папку (ZIP)', () => zipDownload(it.p), 'zip'] : ['Скачать', () => dlFile(fileUrl(it.p, true)), 'download'],
+  ]);
+}
 // после закрытия просмотрщика, открытого из «Избранного», — обновить список (файл могли удалить, переименовать, переместить)
 new MutationObserver(() => {
   const v = $('#viewer');
@@ -913,6 +972,8 @@ document.head.append(Object.assign(document.createElement('style'), {textContent
 #selBar button { width: 38px; height: 38px; border: 0; border-radius: 10px; background: #2a2a31; color: #e6e6ea; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
 #selBar button:hover { background: #35353d; color: #fff; }
 #selBar button .ic-svg { width: 20px; height: 20px; }
+#selBar button.all, .selbar2 button.all { color: #0a84ff; }
+#selBar button.all:hover, .selbar2 button.all:hover { color: #3d9dff; }
 #selBar button.danger { color: #ff6b6b; }
 #selBar button.danger:hover { background: #4a2a2e; color: #ff8a8a; }
 `}));
@@ -921,6 +982,7 @@ document.head.append(Object.assign(document.createElement('style'), {textContent
   const top = $('#top'), list = $('#list');
   const bar = document.createElement('div'); bar.id = 'selBar';
   bar.innerHTML = `<span class="cnt"></span>` +
+    `<button data-sa="all" class="all" title="Выделить все (Ctrl+A)">${ico('selAll')}</button>` +
     `<button data-sa="dl" title="Скачать">${ico('download')}</button>` +
     `<button data-sa="move" title="Переместить">${ico('move')}</button>` +
     `<button data-sa="del" class="danger" title="Удалить">${ico('trash')}</button>` +
@@ -987,6 +1049,7 @@ document.head.append(Object.assign(document.createElement('style'), {textContent
       case 'move': await doMove(ts); break;
       case 'del': await doDelete(ts); break;
       case 'cancel': clearSel(); break;
+      case 'all': L.forEach(i => sel.add(i.n)); markSel(); syncSel(); break;
     }
     later();
   });

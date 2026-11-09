@@ -200,12 +200,14 @@ function sorted() {
   const cmp = {name:(x,y)=>x.n.localeCompare(y.n,'ru',{numeric:true}), date:(x,y)=>y.m-x.m, size:(x,y)=>y.s-x.s}[sort];
   return a.sort((x, y) => (y.d - x.d) || cmp(x, y));
 }
-function rowIcon(it, p) {
-  if (it.d) return `<div class="ic">${FOLDER}</div>`;
+// иконка строки/плитки: превью фото (создаётся при необходимости) и видео (только если уже есть в кэше), иначе значок типа.
+// extra — дополнительная разметка внутри .ic (звёздочка, ссылка); src — свой адрес превью (корзина).
+function rowIcon(it, p, extra = '', src = '') {
+  if (it.d) return `<div class="ic">${FOLDER}${extra}</div>`;
   const k = kindOf(it.n);
-  if (k === 'image') return `<div class="ic"><img loading="lazy" src="${thumbUrl(it,p,320)}" alt="" onerror="this.parentNode.innerHTML=fileSvg('image')"></div>`;
-  if (k === 'video') return `<div class="ic vid">${fileSvg('video')}<span class="pv">${ico('play')}</span></div>`;
-  return `<div class="ic">${fileSvg(k)}</div>`;
+  if (k === 'image') return `<div class="ic"><img loading="lazy" src="${src || thumbUrl(it, p, 320)}" alt="" onerror="this.outerHTML=fileSvg('image')">${extra}</div>`;
+  if (k === 'video') return `<div class="ic vid"><img loading="lazy" src="${src || thumbUrl(it, p, 320) + '&c=1'}" alt="" onerror="this.outerHTML=fileSvg('video')"><span class="pv">${ico('play')}</span>${extra}</div>`;
+  return `<div class="ic">${fileSvg(k)}${extra}</div>`;
 }
 function render() {
   if (mode !== 'files') return;

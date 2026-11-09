@@ -32,8 +32,10 @@ function drawTrash() {
       `<div class="dt">${fmtDate(it.t)}</div><div class="sz">${it.d ? '' : fmtSize(it.s)}</div><button class="icon more">${ico('kebab')}</button></div>`).join('');
 }
 const tSelItems = () => T.items.filter(i => T.sel.has(i.id));
-function tMenu(e) {
-  const its = tSelItems(), ids = its.map(i => i.id), n = ids.length;
+// меню действует на выбранные, если объект среди них, иначе — только на этот объект; выбор не меняется (как в «Файлах»)
+const tTargets = it => T.sel.has(it.id) ? tSelItems() : [it];
+function tMenu(e, its = tSelItems()) {
+  const ids = its.map(i => i.id), n = ids.length;
   popMenu(e, [
     ['Восстановить' + (n > 1 ? ` (${n})` : ''), async () => { await api('restore', {ids}); showTrash(); }, 'restore'],
     '-',
@@ -45,19 +47,14 @@ function tMenu(e) {
 $('#trashv').addEventListener('click', e => {
   const row = e.target.closest('.trow'); if (!row) return;
   const it = T.L[+row.dataset.i];
-  if (e.target.closest('.more')) {
-    T.sel = new Set([it.id]); drawTrash();
-    const nb = document.querySelector(`#trashv .trow[data-i="${row.dataset.i}"] .more`);
-    return tMenu({type: 'click', target: nb, stopPropagation: () => e.stopPropagation(), preventDefault: () => {}});
-  }
+  if (e.target.closest('.more')) return tMenu(e, tTargets(it));
   if (e.ctrlKey || e.metaKey) T.sel.has(it.id) ? T.sel.delete(it.id) : T.sel.add(it.id); else T.sel = new Set([it.id]);
   drawTrash();
 });
 $('#trashv').addEventListener('contextmenu', e => {
   const row = e.target.closest('.trow'); if (!row) return;
   const it = T.L[+row.dataset.i];
-  if (!T.sel.has(it.id)) { T.sel = new Set([it.id]); drawTrash(); }
-  tMenu(e);
+  tMenu(e, tTargets(it));
 });
 
 /* ---------- История ---------- */

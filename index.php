@@ -57,10 +57,11 @@ boot('page');
 </div>
 <div id="uploads" hidden></div>
 <script src="icons.js?v=4"></script>
-<script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
 <script src="photos.js?v=4"></script>
-<script src="trash.js?v=4"></script>
-<script src="viewer.js?v=12"></script>
-<script src="share.js?v=2"></script>
+<script src="trash.js?v=5"></script>
+<script src="viewer.js?v=16"></script>
+<script src="share.js?v=6"></script>
+<script src="select.js?v=2"></script>
 <script>load();</script>
 </body></html>

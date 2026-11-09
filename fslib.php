@@ -166,13 +166,39 @@ function thumb_forget(string $full, int $depth = 0): void {
     }
 }
 
+// Переносит готовые превью при переименовании файла/папки $from -> $to (вызывать после rename, $to уже существует).
+// mtime и размер при rename не меняются, меняется только путь в ключе кэша.
+function thumb_move(string $from, string $to, int $depth = 0): void {
+    if ($depth > 40 || is_link($to)) return;
+    if (is_dir($to)) {
+        foreach (scandir($to) ?: [] as $n) {
+            if ($n === '.' || $n === '..') continue;
+            thumb_move($from . '\\' . $n, $to . '\\' . $n, $depth + 1);
+        }
+        return;
+    }
+    if (!is_file($to)) return;
+    static $types = ['jpg','jpeg','png','gif','webp','heic','heif','avif','tif','tiff','bmp','mp4','mov','m4v','mkv','avi','webm'];
+    if (!in_array(ext_of($to), $types, true)) return;
+    $mt = @filemtime($to); $sz = @filesize($to);
+    if ($mt === false || $sz === false) return;
+    $cache = cfg('data') . '\\cache\\';
+    foreach ([320, 1600] as $w) {
+        $ok = sha1($from . '|' . $mt . '|' . $sz . '|' . $w); $nk = sha1($to . '|' . $mt . '|' . $sz . '|' . $w);
+        $old = $cache . substr($ok, 0, 2) . '\\' . $ok . '.jpg'; $new = $cache . substr($nk, 0, 2) . '\\' . $nk . '.jpg';
+        if (is_file($old)) { ensure_dir(dirname($new)); if (!@rename($old, $new)) @unlink($old); }
+        foreach ([$old . '.fail', $old . '.tmp.jpg'] as $x) if (is_file($x)) @unlink($x);
+    }
+}
+
 function trash_put(string $src, string $rel): bool {
-    thumb_forget($src);
     $isDir = is_dir($src);
     $name = basename($src);
     $size = $isDir ? 0 : (int)@filesize($src);
     $tname = date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . '_' . mb_substr($name, 0, 100);
     if (!@rename($src, trash_dir() . '\\' . $tname)) return false;
+    // превью не удаляем, а переносим на путь в корзине: они показываются в «Корзине» и возвращаются при восстановлении
+    try { thumb_move($src, trash_dir() . '\\' . $tname); } catch (Throwable $e) { error_log('thumb_move: ' . $e->getMessage()); }
     try {
         app_db()->prepare('INSERT OR REPLACE INTO trash(tname,orig,name,dir,size,ts,user) VALUES(?,?,?,?,?,?,?)')
             ->execute([$tname, $rel, $name, $isDir ? 1 : 0, $size, time(), $_SESSION['u'] ?? '']);
@@ -219,6 +245,7 @@ function trash_restore(string $id): ?string {
     $isDir = is_dir($src);
     $t = unique_path($pdir, $name, $isDir);
     if (!@rename($src, $t)) return null;
+    try { $rt = realpath($t); thumb_move($src, $rt !== false ? $rt : $t); } catch (Throwable $e) { error_log('thumb_move: ' . $e->getMessage()); }
     $db->prepare('DELETE FROM trash WHERE tname=?')->execute([$id]);
     $trel = rel_of($t);
     ev('restore', $orig, $trel, $name, $isDir ? 'd' : 'f');
@@ -231,6 +258,7 @@ function trash_purge(string $id, bool $log = true): bool {
     $s = $db->prepare('SELECT * FROM trash WHERE tname=?'); $s->execute([$id]);
     $m = $s->fetch(PDO::FETCH_ASSOC);
     $isDir = is_dir($p);
+    if (file_exists($p)) { try { thumb_forget($p); } catch (Throwable $e) {} }   // превью удаляются вместе с объектом
     $ok = !file_exists($p) || ($isDir ? rrmdir($p) : @unlink($p));
     if ($ok) {
         $db->prepare('DELETE FROM trash WHERE tname=?')->execute([$id]);

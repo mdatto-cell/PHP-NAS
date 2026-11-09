@@ -56,22 +56,23 @@ document.head.append(Object.assign(document.createElement('style'), {textContent
 #sharev .nm small b { font-weight: 500; }
 #sharev .nm small b.once { color: var(--sh-once); } #sharev .nm small b.perm { color: var(--sh-perm); }
 #sharev .fact { position: absolute; right: 56px; top: 50%; transform: translateY(-50%); display: flex; gap: 2px; }
-#sharev .more { visibility: hidden; }
 #sharev .fact button, #sharev .ic > button { width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: #9a9aa6; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
 #sharev .fact button:hover { background: #ffffff14; color: #fff; }
-#sharev .fact button.rv:hover { color: #ff6b6b; }
+/* цветная иконка ссылки: при наведении — «Отозвать доступ» (красная, перечёркнутая) */
+#sharev .lnk .ic-svg + .ic-svg, #sharev .lnk:hover .ic-svg:first-child { display: none; }
+#sharev .lnk:hover .ic-svg + .ic-svg { display: block; }
+#sharev .fact button.lnk:hover, #sharev .ic > button.lnk:hover { color: #ff6b6b !important; }
 #sharev .fact button .ic-svg, #sharev .ic > button .ic-svg { width: 20px; height: 20px; }
 #sharev .fact button.lnk.once, #sharev .ic > button.lnk.once { color: var(--sh-once); }
 #sharev .fact button.lnk.perm, #sharev .ic > button.lnk.perm { color: var(--sh-perm); }
 #sharev.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 170px)); justify-content: start; align-content: start; grid-auto-rows: max-content; gap: 8px; padding: 0 10px 30px; }
 #sharev.grid .row { padding: 8px; }
-#sharev.grid .row .nm small, #sharev.grid .more { display: none; }
+#sharev.grid .row .nm small { display: none; }
 #sharev.grid .row .ic { position: relative; }
 #sharev.grid .fact { display: contents; }
 #sharev.grid .fact button, #sharev.grid .ic > button { position: absolute; z-index: 3; border-radius: 50%; background: rgba(32, 32, 38, .82); color: #e6e6ea; }
 #sharev.grid .fact button { opacity: 0; transition: opacity .12s; }
 #sharev.grid .fact button[data-c] { top: 12px; left: 12px; }
-#sharev.grid .fact button[data-r] { top: 12px; right: 12px; }
 #sharev.grid .ic > button { left: 4px; bottom: 4px; }
 #sharev.grid .row:hover .fact button { opacity: 1; }
 @media (hover: none) { #sharev.grid .fact button { opacity: 1; } }
@@ -86,7 +87,7 @@ async function shLoad() {
   try { const j = await api('share_list', null, {}, true); SH.clear(); (j.items || []).forEach(i => SH.set(i.p, i)); return j.items || []; }
   catch (e) { console.error('share_list', e); return []; }
 }
-function refreshAll() { markShares(); if (!panel.hidden) shShow(); }
+function refreshAll() { markShares(); markFavShares(); vMarkShare(); if (!panel.hidden) shShow(); }
 
 /* ---------- буфер обмена (в локальной сети по HTTP navigator.clipboard недоступен) ---------- */
 async function copyText(s) {
@@ -164,6 +165,18 @@ async function revoke(p) {
 }
 const linkMenu = (e, p) => popMenu(e, [['Скопировать ссылку', () => copyLink(SH.get(p).t), 'copy'], ['Отозвать доступ', () => revoke(p), 'unlink']]);
 
+/* ---------- кнопка «Поделиться» в просмотрщике (Файлы, Галерея, Избранное) ---------- */
+document.head.append(Object.assign(document.createElement('style'), {textContent: `#vshare.once { color: var(--sh-once); } #vshare.perm { color: var(--sh-perm); }`}));
+$('#vfav').insertAdjacentHTML('afterend', `<button id="vshare" class="icon" title="Поделиться">${ico('link')}</button>`);
+function vMarkShare() {
+  const b = $('#vshare'), it = vlist[vi]; if (!b || !it) return;
+  const sh = SH.get(vPath(it));
+  b.classList.toggle('once', !!sh && !!sh.once); b.classList.toggle('perm', !!sh && !sh.once);
+  b.title = sh ? `Поделиться · ${kindTxt(sh.once).toLowerCase()} ссылка` : 'Поделиться';
+}
+$('#vshare').onclick = () => { const it = vlist[vi]; if (it) shareDialog(vPath(it), it.n, false); };
+{ const baseShowV = showV; showV = function () { const r = baseShowV.apply(this, arguments); vMarkShare(); return r; }; }
+
 /* ---------- иконка ссылки в строках и плитках «Файлов» ---------- */
 function markShares() {
   if (mode !== 'files') return;
@@ -199,18 +212,62 @@ $('#list').addEventListener('click', e => {
   if (SH.has(p)) linkMenu(e, p); else shareDialog(p, it.n, it.d);
 }, true);
 
+/* ---------- иконка ссылки в «Избранном» у объектов с общим доступом ---------- */
+document.head.append(Object.assign(document.createElement('style'), {textContent: `
+#favv .row > .flnk, #favv .ic > .flnk { width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; z-index: 3; }
+#favv .flnk .ic-svg { width: 20px; height: 20px; }
+#favv .flnk.once { color: var(--sh-once); } #favv .flnk.perm { color: var(--sh-perm); }
+#favv:not(.grid) .row > .flnk { position: absolute; right: 56px; top: 50%; transform: translateY(-50%); }
+#favv:not(.grid) .row > .flnk:hover { background: #ffffff14; }
+/* плитки: над звёздочкой слева снизу */
+#favv.grid .ic > .flnk { position: absolute; left: 4px; bottom: 40px; border-radius: 50%; background: rgba(32, 32, 38, .82); }
+#favv.grid .ic > .flnk:hover { background: rgba(60, 60, 68, .95); }
+`}));
+function markFavShares() {
+  const fp = $('#favv'); if (!fp || fp.hidden) return;
+  const items = fp._items || [], grid = fp.classList.contains('grid');
+  qa('#favv .frow').forEach(r => {
+    const it = items[+r.dataset.k]; if (!it) return;
+    const sh = SH.get(it.p);
+    let b = r.querySelector('.flnk');
+    if (!sh) { if (b) b.remove(); return; }
+    if (!b) { b = document.createElement('button'); b.innerHTML = ico('link'); }
+    b.className = 'flnk ' + (sh.once ? 'once' : 'perm'); b.dataset.fl = it.p;
+    b.title = `${kindTxt(sh.once)} ссылка — скопировать или отозвать`;
+    const host = grid ? r.querySelector('.ic') : r;
+    if (host && b.parentNode !== host) { const more = r.querySelector(':scope > .more'); if (!grid && more) more.before(b); else host.append(b); }
+  });
+}
+if ($('#favv')) {
+  let qd = false;
+  new MutationObserver(() => { if (qd) return; qd = true; queueMicrotask(() => { qd = false; markFavShares(); }); }).observe($('#favv'), {childList: true});
+  $('#favv').addEventListener('click', e => {
+    const b = e.target.closest('.flnk'); if (!b) return;
+    e.stopPropagation(); e.preventDefault();
+    if (SH.has(b.dataset.fl)) linkMenu(e, b.dataset.fl);
+  }, true);
+}
+
 /* ---------- «Поделиться» в меню «⋮» / правой кнопки и в меню папки ---------- */
 let target = null;
-const pick = e => { target = null; const r = e.target.closest('#list [data-i]'); if (r && mode === 'files') { try { target = sorted()[+r.dataset.i]; } catch (_) {} } };
+const pick = e => {
+  target = null;
+  const r = e.target.closest('#list [data-i]'); if (r && mode === 'files') { try { target = sorted()[+r.dataset.i]; } catch (_) {} }
+  const t = e.target.closest('#pgrid .pt'); if (t && mode === 'photos' && typeof P !== 'undefined') { const it = P.items[+t.dataset.i]; if (it) target = {n: it.n, p: it.p, d: false}; }   // галерея: правая кнопка
+  const f = e.target.closest('#favv .frow'); if (f && mode === 'fav' && !e.target.closest('.ck')) {   // «Избранное» (меню для нескольких выбранных — без «Поделиться»)
+    const it = ($('#favv')._items || [])[+f.dataset.k];
+    if (it && !(window.SELX && SELX.multi('fav', it))) target = {n: it.n, p: it.p, d: it.d};
+  }
+};
 document.addEventListener('contextmenu', pick, true);
-document.addEventListener('click', e => { if (e.target.closest('#list [data-i] .more')) pick(e); else target = null; }, true);
+document.addEventListener('click', e => { if (e.target.closest('#list [data-i] .more, #favv .frow .more')) pick(e); else target = null; }, true);
 {
   const m = $('#menu'); let busy = false;
   new MutationObserver(() => {
     if (busy || m.hidden || !target || m.querySelector('[data-shr]') || !m.children.length) return;
-    if (sel.size > 1 && sel.has(target.n)) return;   // меню для нескольких выбранных — «Поделиться» только для одного объекта
+    if (mode === 'files' && sel.size > 1 && sel.has(target.n)) return;   // меню для нескольких выбранных — «Поделиться» только для одного объекта
     busy = true;
-    const it = target, p = join(cwd, it.n), on = SH.has(p);
+    const it = target, p = it.p ?? join(cwd, it.n), on = SH.has(p);
     const d = document.createElement('div'); d.dataset.shr = '1';
     d.innerHTML = ico('link') + `<span>${on ? 'Поделиться (доступ открыт)' : 'Поделиться'}</span>`;
     d.onclick = ev => { ev.stopPropagation(); m.hidden = true; shareDialog(p, it.n, it.d); };
@@ -257,17 +314,16 @@ function shDraw() {
   $('#viewBtn').innerHTML = ico(grid ? 'list' : 'grid');
   const ra = $('#btnShAll'); if (ra) ra.style.display = all.length ? '' : 'none';
   const cls = i => i.once ? 'once' : 'perm';
-  const lnk = (i, k) => `<button class="lnk ${cls(i)}" data-l="${k}" title="${kindTxt(i.once)} ссылка">${ico('link')}</button>`;
+  const lnk = (i, k) => `<button class="lnk ${cls(i)}" data-l="${k}" title="${kindTxt(i.once)} ссылка — нажмите, чтобы отозвать доступ">${ico('link')}${ico('unlink')}</button>`;
   panel.innerHTML = !all.length ? '<div class="tinfo">Здесь появятся файлы и папки, к которым открыт доступ по ссылке</div>'
     : !items.length ? '<div class="tinfo">Ничего не найдено</div>'
     : items.map((i, k) =>
-    `<div class="row srow" data-k="${k}"><div class="ic">${i.d ? FOLDER : fileSvg(kindOf(i.n))}${grid ? lnk(i, k) : ''}</div>` +
+    `<div class="row srow" data-k="${k}">${rowIcon(i, i.p, grid ? lnk(i, k) : '')}` +
     `<div class="nm">${esc(i.n)}<small>${esc(['Файлы', ...(dirOf(i.p) ? dirOf(i.p).split('/') : [])].join(' › '))} · <b class="${cls(i)}">${kindTxt(i.once)}</b>` +
     (!i.once && i.hits ? ` · скачиваний: ${i.hits}` : '') + `</small></div>` +
     `<div class="dt" title="Доступ открыт">${i.ts ? fmtDate(i.ts) : ''}</div><div class="sz">${i.d ? '' : fmtSize(i.s)}</div>` +
-    `<span class="fact">${grid ? '' : lnk(i, k)}<button data-c="${k}" title="Скопировать ссылку">${ico('copy')}</button>` +
-    `<button class="rv" data-r="${k}" title="Отозвать доступ">${ico('unlink')}</button></span>` +
-    `<button class="icon more" tabindex="-1" aria-hidden="true">${ico('kebab')}</button></div>`).join('');
+    `<span class="fact">${grid ? '' : lnk(i, k)}<button data-c="${k}" title="Скопировать ссылку">${ico('copy')}</button></span>` +
+    `<button class="icon more" title="Действия">${ico('kebab')}</button></div>`).join('');
   panel._items = items;
 }
 function shHide() {
@@ -314,17 +370,40 @@ $('#topx').addEventListener('click', async e => {
 panel.addEventListener('click', async e => {
   const items = panel._items || [], g = a => e.target.closest(`[${a}]`);
   let x;
-  if ((x = g('data-l'))) { e.stopPropagation(); linkMenu(e, items[+x.dataset.l].p); return; }
+  if ((x = g('data-l'))) { e.stopPropagation(); revoke(items[+x.dataset.l].p); return; }
   if ((x = g('data-c'))) { e.stopPropagation(); copyLink(items[+x.dataset.c].t); return; }
-  if ((x = g('data-r'))) { e.stopPropagation(); revoke(items[+x.dataset.r].p); return; }
   const row = e.target.closest('.srow'); if (!row) return;
   const it = items[+row.dataset.k];
-  if (it.d) { shHide(); location.hash = hashFor(it.p); }
-  else {
-    vlist.length = 0; vlist.push({n: it.n, p: it.p, s: it.s}); vi = 0;
-    $('#viewer').classList.add('overshare'); $('#viewer').hidden = false; showV();
-  }
+  if (e.target.closest('.more')) { e.stopPropagation(); shMenu(e, it); return; }
+  shOpen(it);
 });
+panel.addEventListener('contextmenu', e => {
+  const row = e.target.closest('.srow'); if (!row || e.target.closest('.ck')) return;
+  const it = (panel._items || [])[+row.dataset.k]; if (it) shMenu(e, it);
+});
+function shOpen(it) {
+  if (it.d) { shHide(); location.hash = hashFor(it.p); return; }
+  vlist.length = 0; vlist.push({n: it.n, p: it.p, s: it.s}); vi = 0;
+  $('#viewer').classList.add('overshare'); $('#viewer').hidden = false; showV();
+}
+// меню «⋮» / правой кнопки в «Общем доступе»: для выбранных, если объект среди них, иначе — для этого объекта
+function shMenu(e, it) {
+  const its = window.SELX ? SELX.targets('shares', it) : [it], n = its.length;
+  if (n > 1) return popMenu(e, [
+    [`Скачать (${n})`, () => SELX.dl(its), 'download'],
+    [`Скопировать ссылки (${n})`, () => SHX.copy(its), 'copy'],
+    '-',
+    [`Отозвать доступ (${n})`, async () => { if (await SHX.revoke(its)) SELX.clear('shares'); }, 'unlink'],
+  ]);
+  popMenu(e, [
+    [it.d ? 'Открыть папку' : 'Открыть', () => shOpen(it), 'eye'],
+    ['Показать в папке', () => { shHide(); location.hash = hashFor(dirOf(it.p)); }, 'folder'],
+    it.d ? ['Скачать папку (ZIP)', () => zipDownload(it.p), 'zip'] : ['Скачать', () => dlFile(fileUrl(it.p, true)), 'download'],
+    '-',
+    ['Скопировать ссылку', () => copyLink(it.t), 'copy'],
+    ['Отозвать доступ', () => revoke(it.p), 'unlink'],
+  ]);   // «В избранное» добавит общий обработчик меню (viewer.js)
+}
 new MutationObserver(() => {
   const v = $('#viewer');
   if (v.hidden && v.classList.contains('overshare')) { v.classList.remove('overshare'); if (!panel.hidden) shShow(); }
@@ -340,7 +419,7 @@ new MutationObserver(() => {
   const baseApi = api;
   api = async function (a, ...rest) {
     const j = await baseApi(a, ...rest);
-    if (MUT.has(a)) shLoad().then(markShares);
+    if (MUT.has(a)) shLoad().then(() => { markShares(); markFavShares(); });
     return j;
   };
 }
@@ -365,6 +444,23 @@ Object.assign(HACT, {share: 'Открытие доступа', unshare: 'Зак�
   };
 }
 
+/* ---------- для выбора нескольких объектов в разделе «Общий доступ» (select.js) ---------- */
+window.SHX = {
+  async copy(its) {
+    const txt = its.map(i => shUrl(i.t)).join('\n');
+    if (await copyText(txt)) toast(its.length > 1 ? `Скопировано ссылок: ${its.length}` : 'Ссылка скопирована');
+    else uiAlert('Не удалось скопировать автоматически. Ссылки:\n' + txt, 'Ссылки');
+  },
+  async revoke(its) {
+    const n = its.length; if (!n) return false;
+    const msg = n === 1 ? `Ссылка на «${its[0].n}» перестанет работать.` : `Ссылки (${n}) перестанут работать.`;
+    if (!await uiConfirm('Отозвать доступ', msg, 'Отозвать', true)) return false;
+    await api('share_del', {tokens: its.map(i => i.t)});
+    its.forEach(i => SH.delete(i.p)); refreshAll(); toast(n === 1 ? 'Доступ отозван' : `Доступ отозван: ${n}`);
+    return true;
+  },
+};
+
 updateFab();
-shLoad().then(markShares);
+shLoad().then(() => { markShares(); markFavShares(); });
 })();
