@@ -1,0 +1,30 @@
+<?php
+// Скопируйте этот файл в config.php и подставьте свои значения.
+// config.php в репозиторий не попадает (см. .gitignore).
+return [
+    // Папка, которая показывается в веб-интерфейсе
+    'root' => 'H:\\share',
+
+    // Служебные данные: сессии, кэш миниатюр, SQLite, блокировки.
+    // Должна лежать ВНЕ DocumentRoot, лучше на SSD.
+    'data' => 'D:\\www\\data',
+
+    // Пользователи: логин => хэш пароля.
+    // Хэш: php mkpass.php "ваш_пароль"
+    'users' => [
+        'admin' => '$2y$10$REPLACE_WITH_HASH_FROM_MKPASS_PHP',
+    ],
+
+    // ImageMagick с поддержкой HEIC (libheif) и FFmpeg для превью видео
+    'magick' => 'C:\\Program Files\\ImageMagick\\magick.exe',
+    'ffmpeg' => 'C:\\ffmpeg\\bin\\ffmpeg.exe',
+
+    // Сколько конвертаций превью одновременно (воркеры pregen + 1)
+    'thumb_slots' => 4,
+
+    // Галерея
+    'photo_dirs'     => [],                        // пусто = вся root; или ['iCloud', 'Фото']
+    'photo_exclude'  => ['node_modules', 'cache'], // имена папок, которые пропускать
+    'photo_min_size' => 30720,                     // файлы меньше 30 КБ не считать фото
+    'heic_exif'      => true,                      // дата съёмки HEIC через magick identify -ping
+];

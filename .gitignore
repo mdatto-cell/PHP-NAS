@@ -1,0 +1,12 @@
+# Локальная конфигурация с паролями
+config.php
+# Данные приложения (сессии, кэш, индекс, логи)
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.log
+# Отладка
+info.php
+diag.php

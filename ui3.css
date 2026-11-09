@@ -1,0 +1,79 @@
+* { scrollbar-width: thin; scrollbar-color: #4a4a55 transparent; }
+#photos { scrollbar-width: none; }
+#photos::-webkit-scrollbar { display: none; }
+
+.ic-svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: block; }
+.i { display: inline-flex; flex: none; }
+.icon { display: inline-flex; align-items: center; justify-content: center; }
+.nav .ic-svg { width: 30px; height: 30px; }
+.nav { display: flex; align-items: center; justify-content: center; }
+
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.navitem { display: flex; align-items: center; gap: 14px; }
+#side { overflow: hidden; }
+#side nav { flex: 1; }
+.space { margin-bottom: 6px; }
+.logout { color: var(--mut); font-size: 14px; padding: 8px 12px; margin: 0; }
+.logout:hover { color: var(--fg); }
+.logout .ic-svg { width: 20px; height: 20px; }
+
+#menu div { display: flex; align-items: center; gap: 12px; }
+#menu .ic-svg { width: 20px; height: 20px; color: #cfcfd8; }
+
+.row .ic { background: none; padding: 0; overflow: visible; }
+.row .ic > svg { width: 100%; height: 100%; }
+.row .ic img { border-radius: 8px; }
+.row .ic.vid { position: relative; }
+.row .ic.vid::after { content: none; }
+.row .ic.vid .pv { position: absolute; right: 2px; bottom: 2px; background: rgba(0,0,0,.6); border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+.row .ic.vid .pv .ic-svg { width: 10px; height: 10px; }
+.grid .row .ic { aspect-ratio: 1; }
+.grid .row .ic > svg { width: 60%; margin: 0 auto; }
+.grid .row .more .ic-svg { width: 18px; height: 18px; }
+.row .more { color: var(--mut); }
+
+.pt .pv { display: flex; align-items: center; gap: 4px; }
+.pt .pv .ic-svg { width: 11px; height: 11px; }
+
+#ptop { display: flex; }
+#ptop[hidden] { display: none; }
+#ptop .ic-svg { width: 18px; height: 18px; }
+
+/* временная шкала */
+#prail { right: 8px; width: 56px; cursor: pointer; touch-action: none; padding: 6px 0; }
+#prail .ry b { font-size: 12px; padding: 0 6px 0 0; transition: color .15s; }
+#prail .rm { margin: 2px 6px 2px 0; }
+#prail .rm.act, #prail b.act { color: #fff; }
+#prail .rm.act { background: #4c8dff; width: 18px; height: 3px; }
+#prail .rm.hov { background: #fff; width: 22px; }
+#prail b.hov { color: #fff; }
+#pbub { position: absolute; right: 70px; z-index: 12; background: #fff; color: #111; font-weight: 600; font-size: 13px; padding: 6px 12px; border-radius: 10px; pointer-events: none; white-space: nowrap; box-shadow: 0 4px 16px #0008; }
+#pbub::after { content: ""; position: absolute; right: -5px; top: 50%; margin-top: -5px; border: 5px solid transparent; border-left-color: #fff; border-right: 0; }
+body.mode-photos #photos { padding-right: 72px; }
+
+#calBtn .ic-svg { width: 24px; height: 24px; }
+#btnEmpty { display: inline-flex; align-items: center; gap: 8px; }
+#btnEmpty .ic-svg { width: 18px; height: 18px; }
+.calh button { display: flex; }
+/* плитки: ряды по высоте содержимого, фиксированная ширина */
+#list.grid, #trashv.grid {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 170px));
+  justify-content: start;
+  align-content: start;
+  grid-auto-rows: max-content;
+  gap: 8px;
+}
+.grid .row { align-self: start; height: auto; }
+.grid .row:hover { background: var(--bg2); }
+.grid .row.sel { background: #3b3b47; }
+.grid .row .ic { width: 100%; height: auto; aspect-ratio: 1 / .8; display: flex; align-items: center; justify-content: center; }
+.grid .row .ic > svg { width: 64%; height: auto; }
+.grid .row .ic img { width: 100%; height: 100%; object-fit: cover; }
+.grid .row .nm {
+  white-space: normal; text-align: center; word-break: break-word;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+/* кнопка «⋮» только при наведении или выделении; на сенсорных экранах всегда видна */
+.grid .row .more { opacity: 0; transition: opacity .12s; }
+.grid .row:hover .more, .grid .row.sel .more { opacity: 1; }
+@media (hover: none) { .grid .row .more { opacity: 1; } }

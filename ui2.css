@@ -1,0 +1,59 @@
+#topx{display:flex;gap:8px;align-items:center}
+.btn.sm{width:auto;display:inline-block;margin:0;padding:9px 14px}
+.btn.danger{background:#5a2328}
+hr{border:0;border-top:1px solid #444;margin:4px 6px}
+#menu div{white-space:nowrap}
+.row.sel{background:#3b3b47}
+.row.sel:hover{background:#44445a}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:flex;align-items:center;justify-content:center}
+.dlg{background:#2d2d35;border-radius:16px;padding:18px;width:460px;max-width:94%;max-height:86%;display:flex;flex-direction:column}
+.dlg h3{margin:0 0 8px}
+.dcrumbs{color:var(--mut);font-size:13px;margin-bottom:8px;word-break:break-all}
+.dcrumbs a{cursor:pointer;color:var(--fg)}
+.dlist{flex:1;overflow:auto;min-height:180px;background:var(--bg);border-radius:12px;padding:4px}
+.dlist div{padding:9px 12px;border-radius:9px;cursor:pointer}.dlist div:hover{background:var(--bg3)}
+.dfoot{display:flex;gap:8px;margin-top:12px}
+.dfoot .btn{margin:0;flex:1}
+#prail{position:absolute;right:10px;top:70px;bottom:18px;width:48px;display:flex;flex-direction:column;z-index:3;font-size:11px;user-select:none}
+body:not(.mode-photos) #prail{display:none}
+.ry{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;min-height:22px}
+.ry b{cursor:pointer;color:var(--mut);font-weight:500;line-height:1}
+.ry b:hover,.ry b.act{color:#fff}
+.rm{display:block;width:8px;height:2px;background:#666;cursor:pointer;margin:1px 0}
+.rm:hover,.rm.act{background:#fff;width:14px}
+body.mode-photos #photos{padding-right:64px}
+#ptop{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);width:auto;z-index:6;box-shadow:0 4px 18px #000a}
+#cal{position:absolute;right:18px;top:62px;background:#2d2d35;border-radius:16px;padding:12px;width:290px;z-index:10;box-shadow:0 8px 30px #000a}
+.calh{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.calh select{background:var(--bg3);border:0;border-radius:8px;padding:5px;flex:1}
+.calh select option{background:#222}
+.calh button{background:none;border:0;font-size:20px;cursor:pointer;padding:2px 8px;color:var(--fg)}
+.calg{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.calg span{color:var(--mut);font-size:11px;padding:4px 0}
+.calg button{background:none;border:0;border-radius:8px;padding:7px 0;cursor:pointer;color:#777}
+.calg button.has{color:#fff;font-weight:600;background:var(--bg3)}
+.calg button:hover{outline:1px solid #888}
+.trow .nm small{display:block;color:var(--mut);font-size:12px}
+#trashv,#histv{flex:1;overflow:auto;padding:0 10px 30px}
+.tinfo{color:var(--mut);padding:10px 12px;font-size:13px}
+.hctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:4px 12px 10px;color:var(--mut)}
+.hctl input,.hctl select{background:var(--bg3);border:0;border-radius:10px;padding:8px 10px}
+.hctl select option{background:#222}
+.hday{margin:18px 12px 6px;font-size:17px;font-weight:600}
+.hrow{display:flex;gap:16px;padding:10px 12px;border-radius:12px}
+.hrow:hover{background:var(--bg2)}
+.hrow time{color:var(--mut);width:48px;flex:none}
+.htxt{flex:1;min-width:0}
+.htxt a{color:#6fb1ff}
+.hnames{margin-top:4px;padding-left:10px}
+.hnames div{margin:2px 0}
+.hth{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.hth img{width:110px;height:72px;object-fit:cover;border-radius:6px;background:var(--bg3)}
+.hdev{color:var(--mut);font-size:13px;white-space:nowrap}
+.hmore{margin:14px auto;display:block;width:auto}
+@media(max-width:800px){
+  #prail{display:none !important}
+  body.mode-photos #photos{padding-right:14px}
+  .hrow{flex-wrap:wrap}.hdev{width:100%;padding-left:64px;white-space:normal}
+  #cal{right:8px;left:8px;width:auto}
+}
