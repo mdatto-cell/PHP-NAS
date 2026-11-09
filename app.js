@@ -202,11 +202,24 @@ function sorted() {
 }
 // иконка строки/плитки: превью фото (создаётся при необходимости) и видео (только если уже есть в кэше), иначе значок типа.
 // extra — дополнительная разметка внутри .ic (звёздочка, ссылка); src — свой адрес превью (корзина).
+/* превью без «мигания» при перерисовке (смена вида, сортировка, поиск):
+   превью, которого нет (404), запоминается до обновления страницы и сразу рисуется значком,
+   а уже загруженные картинки переносятся в новую разметку вместо повторной загрузки */
+const THUMB_BAD = new Set();
+function thumbFail(img, k) { THUMB_BAD.add(img.getAttribute('src')); img.outerHTML = fileSvg(k); }
+function setHTML(el, html) {
+  const old = new Map();
+  el.querySelectorAll('.ic > img').forEach(i => { if (i.complete && i.naturalWidth) old.set(i.getAttribute('src'), i); });
+  el.innerHTML = html;
+  if (old.size) el.querySelectorAll('.ic > img').forEach(i => { const o = old.get(i.getAttribute('src')); if (o) { old.delete(i.getAttribute('src')); i.replaceWith(o); } });
+}
 function rowIcon(it, p, extra = '', src = '') {
   if (it.d) return `<div class="ic">${FOLDER}${extra}</div>`;
   const k = kindOf(it.n);
-  if (k === 'image') return `<div class="ic"><img loading="lazy" src="${src || thumbUrl(it, p, 320)}" alt="" onerror="this.outerHTML=fileSvg('image')">${extra}</div>`;
-  if (k === 'video') return `<div class="ic vid"><img loading="lazy" src="${src || thumbUrl(it, p, 320) + '&c=1'}" alt="" onerror="this.outerHTML=fileSvg('video')"><span class="pv">${ico('play')}</span>${extra}</div>`;
+  const u = src || (k === 'image' ? thumbUrl(it, p, 320) : k === 'video' ? thumbUrl(it, p, 320) + '&c=1' : '');
+  if (u && THUMB_BAD.has(u)) return `<div class="ic${k === 'video' ? ' vid' : ''}">${fileSvg(k)}${k === 'video' ? `<span class="pv">${ico('play')}</span>` : ''}${extra}</div>`;
+  if (k === 'image') return `<div class="ic"><img loading="lazy" src="${src || thumbUrl(it, p, 320)}" alt="" onerror="thumbFail(this,'image')">${extra}</div>`;
+  if (k === 'video') return `<div class="ic vid"><img loading="lazy" src="${src || thumbUrl(it, p, 320) + '&c=1'}" alt="" onerror="thumbFail(this,'video')"><span class="pv">${ico('play')}</span>${extra}</div>`;
   return `<div class="ic">${fileSvg(k)}${extra}</div>`;
 }
 function render() {
@@ -218,11 +231,11 @@ function render() {
   $('#sort').value = sort; $('#viewBtn').innerHTML = ico(view === 'grid' ? 'list' : 'grid');
   L = sorted();
   const el = $('#list'); el.className = view === 'grid' ? 'grid' : '';
-  el.innerHTML = L.map((it, i) => {
+  setHTML(el, L.map((it, i) => {
     const p = join(cwd, it.n);
     return `<div class="row${sel.has(it.n) ? ' sel' : ''}" data-i="${i}">${rowIcon(it, p)}<div class="nm">${esc(it.n)}</div>` +
       `<div class="dt">${fmtDate(it.m)}</div><div class="sz">${it.d ? '' : fmtSize(it.s)}</div><button class="icon more">${ico('kebab')}</button></div>`;
-  }).join('');
+  }).join(''));
   $('#empty').hidden = L.length > 0;
   document.title = (cwd.split('/').pop() || 'Файлы') + ' — Диск';
 }

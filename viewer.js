@@ -261,9 +261,9 @@ sorted = function() {
       const be = $('#btnEmpty'); if (be) be.style.display = T.items.length ? '' : 'none';   // «Очистить корзину» — только если есть что очищать
       if (!T.items.length) { el.innerHTML = '<div class="tinfo">Корзина пуста</div>'; return; }
       if (!T.L.length) { el.innerHTML = '<div class="tinfo">Ничего не найдено</div>'; return; }
-      el.innerHTML = T.L.map((it, i) => `<div class="row trow${T.sel.has(it.id) ? ' sel' : ''}" data-i="${i}">${rowIcon({n: it.name, d: it.d}, '', '', 'thumb.php?t=' + enc(it.id) + '&w=320')}` +
+      setHTML(el, T.L.map((it, i) => `<div class="row trow${T.sel.has(it.id) ? ' sel' : ''}" data-i="${i}">${rowIcon({n: it.name, d: it.d}, '', '', 'thumb.php?t=' + enc(it.id) + '&w=320')}` +
           `<div class="nm">${esc(it.name)}<small>${it.orig ? 'из: ' + esc(dirOf(it.orig) || 'Файлы') : 'исходное место неизвестно'}</small></div>` +
-          `<div class="dt">${fmtDate(it.t)}</div><div class="sz">${it.d ? '' : fmtSize(it.s)}</div><button class="icon more">${ico('kebab')}</button></div>`).join('');
+          `<div class="dt">${fmtDate(it.t)}</div><div class="sz">${it.d ? '' : fmtSize(it.s)}</div><button class="icon more">${ico('kebab')}</button></div>`).join(''));
     };
   }
 }
@@ -848,7 +848,7 @@ function favDraw() {
   favPanel.className = grid ? 'grid' : '';
   $('#viewBtn').innerHTML = ico(grid ? 'list' : 'grid');
   const star = k => `<button data-u="${k}" title="Убрать из избранного">${ico('starFill')}</button>`;
-  favPanel.innerHTML = !all.length ? '<div class="tinfo">Здесь появятся файлы и папки, отмеченные звёздочкой</div>'
+  setHTML(favPanel, !all.length ? '<div class="tinfo">Здесь появятся файлы и папки, отмеченные звёздочкой</div>'
     : !items.length ? '<div class="tinfo">Ничего не найдено</div>'
     : items.map((i, k) =>
     `<div class="row frow" data-k="${k}">${rowIcon(i, i.p, grid ? star(k) : '')}` +
@@ -856,7 +856,7 @@ function favDraw() {
     `<div class="dt">${i.m ? fmtDate(i.m) : ''}</div><div class="sz">${i.d ? '' : fmtSize(i.s)}</div>` +
     `<span class="fact">` + (i.d ? `<button data-z="${k}" title="Скачать папку (ZIP)">${ico('download')}</button>` : `<button data-dl="${k}" title="Скачать">${ico('download')}</button>`) +
     (grid ? '' : star(k)) + `</span>` +
-    `<button class="icon more" title="Действия">${ico('kebab')}</button></div>`).join('');
+    `<button class="icon more" title="Действия">${ico('kebab')}</button></div>`).join(''));
   favPanel._items = items;
 }
 $('#filter').addEventListener('input', () => { if (mode === 'fav') favDraw(); });

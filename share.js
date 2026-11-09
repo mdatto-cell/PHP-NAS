@@ -315,7 +315,7 @@ function shDraw() {
   const ra = $('#btnShAll'); if (ra) ra.style.display = all.length ? '' : 'none';
   const cls = i => i.once ? 'once' : 'perm';
   const lnk = (i, k) => `<button class="lnk ${cls(i)}" data-l="${k}" title="${kindTxt(i.once)} ссылка — нажмите, чтобы отозвать доступ">${ico('link')}${ico('unlink')}</button>`;
-  panel.innerHTML = !all.length ? '<div class="tinfo">Здесь появятся файлы и папки, к которым открыт доступ по ссылке</div>'
+  setHTML(panel, !all.length ? '<div class="tinfo">Здесь появятся файлы и папки, к которым открыт доступ по ссылке</div>'
     : !items.length ? '<div class="tinfo">Ничего не найдено</div>'
     : items.map((i, k) =>
     `<div class="row srow" data-k="${k}">${rowIcon(i, i.p, grid ? lnk(i, k) : '')}` +
@@ -323,7 +323,7 @@ function shDraw() {
     (!i.once && i.hits ? ` · скачиваний: ${i.hits}` : '') + `</small></div>` +
     `<div class="dt" title="Доступ открыт">${i.ts ? fmtDate(i.ts) : ''}</div><div class="sz">${i.d ? '' : fmtSize(i.s)}</div>` +
     `<span class="fact">${grid ? '' : lnk(i, k)}<button data-c="${k}" title="Скопировать ссылку">${ico('copy')}</button></span>` +
-    `<button class="icon more" title="Действия">${ico('kebab')}</button></div>`).join('');
+    `<button class="icon more" title="Действия">${ico('kebab')}</button></div>`).join(''));
   panel._items = items;
 }
 function shHide() {
