@@ -37,5 +37,7 @@ const FILEGLYPH = {
   pdf:   FILE('#d9473f', '<text x="24" y="34" font-size="10" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="700">PDF</text>'),
 };
 const FOLDER = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M4 12a4 4 0 0 1 4-4h11l4 4h17a4 4 0 0 1 4 4v22a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z" fill="#e8a923"/><path d="M4 19a4 4 0 0 1 4-4h32a4 4 0 0 1 4 4v19a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z" fill="#ffd45e"/></svg>';
+// папка-ссылка (mklink /D) — та же папка со значком «планета Земля» (шара) на передней стороне
+const FOLDER_LNK = FOLDER.replace('</svg>', '<g fill="none" stroke="#9a6a06" stroke-width="1.9" stroke-linecap="round"><circle cx="24" cy="29" r="8.6"/><ellipse cx="24" cy="29" rx="3.6" ry="8.6"/><path d="M15.4 29h17.2M16.6 24.6h14.8M16.6 33.4h14.8"/></g></svg>');
 const fileSvg = k => FILEGLYPH[k] || FILEGLYPH.doc;
 document.querySelectorAll('[data-i]').forEach(e => { e.innerHTML = ico(e.dataset.i); });

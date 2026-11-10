@@ -348,7 +348,7 @@ async function treeRender() {
   box.innerHTML = rows.map(([cp, k, d]) =>
     `<a class="trw${mode === 'files' && cwd === cp ? ' on' : ''}" href="${hashFor(cp)}" title="${esc(k.n)}" style="padding-left:${10 + d * 18}px">` +
     `<span class="tch${k.h !== false && TOPEN.has(cp) ? ' open' : ''}" data-t="${esc(cp)}">${k.h !== false ? ico('chevR') : ''}</span>` +
-    `<span class="pfi">${FOLDER}</span><span class="tn">${esc(k.n)}</span></a>`).join('');
+    `<span class="pfi">${k.l ? FOLDER_LNK : FOLDER}</span><span class="tn">${esc(k.n)}</span></a>`).join('');
 }
 function treeClear() { for (const k in TD) delete TD[k]; treeRender(); }
 
@@ -373,11 +373,11 @@ function pickFolder(start, title, targets, okLabel = 'Переместить', s
         }
       };
       if (open.has('')) await walk('', 1);
-      const row = (cp, name, d, h, root) =>
+      const row = (cp, name, d, h, root, l) =>
         `<div class="prow${cur === cp ? ' on' : ''}" data-p="${esc(cp)}" style="padding-left:${8 + d * 20}px">` +
         `<span class="tch${open.has(cp) ? ' open' : ''}" data-t="${esc(cp)}">${h ? ico('chevR') : ''}</span>` +
-        `<span class="pfi">${root ? ico('folder') : FOLDER}</span><span class="pn">${esc(name)}</span></div>`;
-      tree.innerHTML = row('', 'Файлы', 0, true, true) + rows.map(r => row(r[0], r[1].n, r[2], r[1].h !== false)).join('');
+        `<span class="pfi">${root ? ico('folder') : l ? FOLDER_LNK : FOLDER}</span><span class="pn">${esc(name)}</span></div>`;
+      tree.innerHTML = row('', 'Файлы', 0, true, true) + rows.map(r => row(r[0], r[1].n, r[2], r[1].h !== false, false, r[1].l)).join('');
       okBtn.disabled = !sameOk && cur === start;
       if (first) { first = false; const on = tree.querySelector('.on'); if (on) on.scrollIntoView({block: 'nearest'}); }
     }

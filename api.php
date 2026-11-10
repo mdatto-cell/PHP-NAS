@@ -49,7 +49,9 @@ try {
             if ($n === '.' || $n === '..' || is_hidden($n)) continue;
             $f = $full . '\\' . $n;
             $d = is_dir($f);
-            $items[] = ['n' => $n, 'd' => $d, 's' => $d ? 0 : (int)@filesize($f), 'm' => (int)@filemtime($f)];
+            $it = ['n' => $n, 'd' => $d, 's' => $d ? 0 : (int)@filesize($f), 'm' => (int)@filemtime($f)];
+            if (is_share_link($f)) $it['l'] = 1;   // папка-ссылка (mklink /D) — значок «шары»
+            $items[] = $it;
         }
         json_out(['path' => $rel, 'items' => $items]);
 
@@ -72,7 +74,7 @@ try {
                 }
                 closedir($dh);
             }
-            $dirs[] = ['n' => $n, 'h' => $h];
+            $dirs[] = is_share_link($f) ? ['n' => $n, 'h' => $h, 'l' => 1] : ['n' => $n, 'h' => $h];
         }
         json_out(['path' => $rel, 'dirs' => $dirs]);
 
@@ -128,7 +130,7 @@ try {
             $t = unique_path($dst, $nm, $isDir);
             $trel = rel_of($t);
             if ($a === 'move') {
-                if (!@rename($src, $t)) { $errs[] = "«$nm»: не удалось переместить"; continue; }
+                if (!move_path($src, $t)) { $errs[] = "«$nm»: не удалось переместить"; continue; }
                 idx_move($rel, $trel); fav_move($rel, $trel); share_move($rel, $trel);
                 ev('move', $rel, $trel, $nm, $isDir ? 'd' : 'f');
             } else {
@@ -164,6 +166,7 @@ try {
             try { [$full, $rel] = resolve($r['path']); } catch (Throwable $e) { fav_remove($r['path']); continue; }
             $d = is_dir($full);
             $out[] = ['p' => $rel, 'n' => basename($full), 'd' => $d, 's' => $d ? 0 : (int)@filesize($full), 'm' => (int)@filemtime($full), 't' => (int)$r['ts']];
+            if (is_share_link($full)) $out[count($out) - 1]['l'] = 1;
         }
         json_out(['items' => $out]);
 
@@ -188,6 +191,7 @@ try {
             $d = is_dir($full);
             $out[] = ['t' => $r['token'], 'p' => $rel, 'n' => basename($full), 'd' => $d, 's' => $d ? 0 : (int)@filesize($full), 'm' => (int)@filemtime($full),
                       'once' => (bool)$r['once'], 'ts' => (int)$r['ts'], 'hits' => (int)$r['hits'], 'last' => (int)($r['last'] ?? 0)];
+            if (is_share_link($full)) $out[count($out) - 1]['l'] = 1;
         }
         json_out(['items' => $out]);
 

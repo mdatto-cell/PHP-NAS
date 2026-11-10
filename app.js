@@ -219,7 +219,7 @@ function setHTML(el, html) {
   if (old.size) el.querySelectorAll('.ic > img').forEach(i => { const o = old.get(i.getAttribute('src')); if (o) { old.delete(i.getAttribute('src')); i.replaceWith(o); } });
 }
 function rowIcon(it, p, extra = '', src = '') {
-  if (it.d) return `<div class="ic">${FOLDER}${extra}</div>`;
+  if (it.d) return `<div class="ic"${it.l ? ' title="Папка-ссылка"' : ''}>${it.l ? FOLDER_LNK : FOLDER}${extra}</div>`;
   const k = kindOf(it.n);
   const u = src || (k === 'image' ? thumbUrl(it, p, 320) : k === 'video' ? thumbUrl(it, p, 320) + '&c=1' : '');
   if (u && THUMB_BAD.has(u)) return `<div class="ic${k === 'video' ? ' vid' : ''}">${fileSvg(k)}${k === 'video' ? `<span class="pv">${ico('play')}</span>` : ''}${extra}</div>`;

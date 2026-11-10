@@ -75,18 +75,59 @@ function inside(string $p): bool {
     $r = root();
     return $p === $r || stripos($p, $r . '\\') === 0;
 }
+/* ---------- символические ссылки (mklink /D) внутри root ----------
+   'symlinks' в config.php: false/нет — ссылки, ведущие за пределы root, не открываются (как раньше);
+   true — открываются любые; массив папок — только ссылки, цель которых лежит внутри одной из них.
+   Через ссылку путь остаётся «внутренним» (root\Ссылка\...), поэтому избранное, ссылки, история и превью работают как обычно. */
+function links_on(): bool { $c = cfg('symlinks'); return $c === true || (is_array($c) && $c); }
+function link_allowed(string $target): bool {
+    $c = cfg('symlinks');
+    if ($c === true) return true;
+    if (!is_array($c)) return false;
+    foreach ($c as $b) {
+        $rb = realpath((string)$b); if ($rb === false) continue;
+        $rb = rtrim($rb, '\\');
+        if (strcasecmp($target, $rb) === 0 || stripos($target, $rb . '\\') === 0) return true;
+    }
+    return false;
+}
+// путь root\a\b\... идёт через разрешённую ссылку и не выходит за пределы её цели (вложенные ссылки проверяются так же)
+function via_link(string $full): bool {
+    if (!links_on()) return false;
+    $r = root();
+    if (stripos($full, $r . '\\') !== 0) return false;
+    $cur = $r; $base = null;
+    foreach (explode('\\', substr($full, strlen($r) + 1)) as $s) {
+        if ($s === '') continue;
+        $cur .= '\\' . $s;
+        if (!is_link($cur)) continue;
+        $t = realpath($cur);
+        if ($t === false || !link_allowed($t)) return false;
+        if (stripos($r . '\\', rtrim($t, '\\') . '\\') === 0) return false;   // ссылка на сам root или выше — петля, не открываем
+        $base = rtrim($t, '\\');
+    }
+    if ($base === null) return false;
+    $rp = realpath($full);
+    return $rp !== false && (strcasecmp($rp, $base) === 0 || stripos($rp, $base . '\\') === 0);
+}
+// это разрешённая ссылка на папку/файл (для значка «шары» в интерфейсе)
+function is_share_link(string $full): bool { return links_on() && is_link($full) && via_link($full); }
+
 // existing=true -> путь должен существовать; false -> родитель должен существовать
 function resolve(string $rel, bool $existing = true): array {
     $rel = clean_rel($rel);
     $full = $rel === '' ? root() : root() . '\\' . str_replace('/', '\\', $rel);
     if ($existing) {
         $rp = realpath($full);
-        if ($rp === false || !inside($rp)) throw new RuntimeException('not found');
-        return [$rp, $rel];
+        if ($rp !== false && inside($rp)) return [$rp, $rel];
+        if ($rp !== false && via_link($full)) return [$full, $rel];   // через ссылку — путь внутри root, не цель ссылки
+        throw new RuntimeException('not found');
     }
-    $par = realpath(dirname($full));
-    if ($par === false || !inside($par)) throw new RuntimeException('bad parent');
-    return [$par . '\\' . basename($full), $rel];
+    $dir = dirname($full);
+    $par = realpath($dir);
+    if ($par !== false && inside($par)) return [$par . '\\' . basename($full), $rel];
+    if ($par !== false && via_link($dir)) return [$dir . '\\' . basename($full), $rel];
+    throw new RuntimeException('bad parent');
 }
 
 function ext_of(string $n): string { return strtolower(pathinfo($n, PATHINFO_EXTENSION)); }

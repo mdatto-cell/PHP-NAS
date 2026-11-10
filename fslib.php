@@ -110,13 +110,14 @@ function rrmdir(string $p): bool {
     if (!inside($p) || $p === root()) return false;
     if (is_link($p) || is_file($p)) return @unlink($p) || @rmdir($p);
     $ok = true;
+    $pp = realpath($p); if ($pp === false) return false;   // внутри ссылки реальный путь отличается от $p — сравниваем с реальным
     foreach (scandir($p) ?: [] as $n) {
         if ($n === '.' || $n === '..') continue;
         $c = $p . '\\' . $n;
         if (is_link($c)) { @unlink($c) || @rmdir($c); continue; }
         if (is_dir($c)) {
             $rp = realpath($c);
-            if ($rp === false || stripos($rp, $p . '\\') !== 0) { @rmdir($c); continue; }
+            if ($rp === false || stripos($rp, $pp . '\\') !== 0) { @rmdir($c); continue; }
             $ok = rrmdir($c) && $ok;
         } else {
             if (!@unlink($c)) { @chmod($c, 0666); $ok = @unlink($c) && $ok; }
@@ -132,8 +133,24 @@ function ensure_rel_dir(string $rel): string {
         if (!is_dir($cur) && !@mkdir($cur)) throw new RuntimeException('Не удалось создать папку');
     }
     $rp = realpath($cur);
-    if ($rp === false || !inside($rp)) throw new RuntimeException('bad path');
-    return $rp;
+    if ($rp !== false && inside($rp)) return $rp;
+    if ($rp !== false && via_link($cur)) return $cur;
+    throw new RuntimeException('bad path');
+}
+// диск/шара, на которой реально лежит путь: «d:» или «\\\\server\\share»
+function vol_of(string $p): string {
+    $r = realpath($p); if ($r === false) return '';
+    if (preg_match('~^\\\\\\\\[^\\\\]+\\\\[^\\\\]+~', $r, $m)) return strtolower($m[0]);
+    return strtolower(substr($r, 0, 2));
+}
+// перемещение: rename, а если цель на другом диске (папка-ссылка) — копирование и удаление исходного
+function move_path(string $src, string $dst): bool {
+    if (@rename($src, $dst)) return true;
+    if (is_link($src) || !file_exists($src)) return false;   // саму ссылку не копируем
+    if (vol_of($src) === vol_of(dirname($dst))) return false; // тот же диск — rename не удался по другой причине (занят, нет прав), копировать не надо
+    if (!copy_tree($src, $dst)) { if (is_dir($dst)) rrmdir($dst); else @unlink($dst); return false; }
+    if (!(is_dir($src) ? rrmdir($src) : @unlink($src))) error_log("move_path: скопировано, но исходное удалено не полностью: $src");
+    return true;
 }
 function rel_of(string $full): string { return str_replace('\\', '/', substr($full, strlen(root()) + 1)); }
 
@@ -196,7 +213,7 @@ function trash_put(string $src, string $rel): bool {
     $name = basename($src);
     $size = $isDir ? 0 : (int)@filesize($src);
     $tname = date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . '_' . mb_substr($name, 0, 100);
-    if (!@rename($src, trash_dir() . '\\' . $tname)) return false;
+    if (!move_path($src, trash_dir() . '\\' . $tname)) return false;
     // превью не удаляем, а переносим на путь в корзине: они показываются в «Корзине» и возвращаются при восстановлении
     try { thumb_move($src, trash_dir() . '\\' . $tname); } catch (Throwable $e) { error_log('thumb_move: ' . $e->getMessage()); }
     try {
@@ -244,7 +261,7 @@ function trash_restore(string $id): ?string {
     try { $pdir = ensure_rel_dir($parent); } catch (Throwable $e) { $pdir = root(); }
     $isDir = is_dir($src);
     $t = unique_path($pdir, $name, $isDir);
-    if (!@rename($src, $t)) return null;
+    if (!move_path($src, $t)) return null;
     try { $rt = realpath($t); thumb_move($src, $rt !== false ? $rt : $t); } catch (Throwable $e) { error_log('thumb_move: ' . $e->getMessage()); }
     $db->prepare('DELETE FROM trash WHERE tname=?')->execute([$id]);
     $trel = rel_of($t);
