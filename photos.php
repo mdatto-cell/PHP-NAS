@@ -26,7 +26,13 @@ try {
         json_out(['days' => (object)$days]);
     case 'timeline':
         $limit = max(1, min(500, (int)($_GET['limit'] ?? 240)));
-        if (isset($_GET['bt'])) {
+        if (isset($_GET['at'])) {
+            // более новые, чем курсор (прокрутка вверх после перехода к дате): по возрастанию, клиент добавляет их сверху
+            $s = $db->prepare('SELECT id,path,name,kind,taken,mtime FROM media
+                WHERE taken > :t OR (taken = :t AND id > :i) ORDER BY taken ASC, id ASC LIMIT :n');
+            $s->bindValue(':t', (int)$_GET['at'], PDO::PARAM_INT);
+            $s->bindValue(':i', (int)($_GET['ai'] ?? 0), PDO::PARAM_INT);
+        } elseif (isset($_GET['bt'])) {
             $s = $db->prepare('SELECT id,path,name,kind,taken,mtime FROM media
                 WHERE taken < :t OR (taken = :t AND id < :i) ORDER BY taken DESC, id DESC LIMIT :n');
             $s->bindValue(':t', (int)$_GET['bt'], PDO::PARAM_INT);

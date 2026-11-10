@@ -454,6 +454,13 @@ function popMenu(e, acts) {
   e.stopPropagation();
 }
 
+// повторное нажатие правой кнопкой при открытом меню закрывает его (и не показывает меню браузера)
+document.addEventListener('contextmenu', e => {
+  const m = $('#menu'); if (m.hidden) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  m.hidden = true; m._opener = null;
+}, true);
+
 async function newFolderHere() {
   const n = await uiPrompt('Новая папка', '', 'Создать', {placeholder: 'Название папки'});
   if (n) { await api('mkdir', {p: cwd, name: n}); load(); }

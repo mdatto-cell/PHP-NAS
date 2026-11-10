@@ -50,6 +50,18 @@
 #pbub { position: absolute; right: 70px; z-index: 12; background: #fff; color: #111; font-weight: 600; font-size: 13px; padding: 6px 12px; border-radius: 10px; pointer-events: none; white-space: nowrap; box-shadow: 0 4px 16px #0008; }
 #pbub::after { content: ""; position: absolute; right: -5px; top: 50%; margin-top: -5px; border: 5px solid transparent; border-left-color: #fff; border-right: 0; }
 body.mode-photos #photos { padding-right: 72px; }
+/* прокрутка вверх догружает новые фото сверху — положение сохраняем сами */
+#photos { overflow-anchor: none; }
+/* «раздвигание» шкалы: год под курсором с подписями месяцев, остальные сжаты */
+#prail.zoom .ry { min-height: 0; overflow: hidden; }
+#prail.zoom .ry:not(.ex) .rm { display: none; }
+#prail.zoom .ry:not(.ex) { justify-content: center; }
+#prail .ry.ex { justify-content: space-evenly; }
+#prail .ry.ex b { color: #fff; font-size: 13px; }
+#prail .ry.ex .rm { width: auto; height: auto; background: none; margin: 0 6px 0 0; font-style: normal; font-size: 11px; line-height: 1; color: var(--mut); }
+#prail .ry.ex .rm::before { content: attr(data-s); }
+#prail .ry.ex .rm.act { color: #4c8dff; background: none; width: auto; height: auto; }
+#prail .ry.ex .rm.hov { color: #fff; background: none; width: auto; font-weight: 600; }
 
 #calBtn .ic-svg { width: 24px; height: 24px; }
 #btnEmpty { display: inline-flex; align-items: center; gap: 8px; }

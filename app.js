@@ -154,7 +154,12 @@ function treeToggle(p) {
   TOPEN.has(p) ? TOPEN.delete(p) : TOPEN.add(p);
   localStorage.ftOpen = JSON.stringify([...TOPEN]); treeRender();
 }
+let treeLast = null;
 function treeReveal(path) {
+  // переход выше по пути (хлебные крошки, «Вверх», дерево) — свернуть папки ниже новой текущей
+  if (treeLast !== null && treeLast !== path && (path === '' || treeLast.startsWith(path + '/')))
+    for (const p of [...TOPEN]) if (p && (path === '' || p.startsWith(path + '/'))) TOPEN.delete(p);
+  treeLast = path;
   let acc = ''; TOPEN.add('');
   for (const s of path ? path.split('/') : []) { TOPEN.add(acc); acc = join(acc, s); }
   localStorage.ftOpen = JSON.stringify([...TOPEN]);
