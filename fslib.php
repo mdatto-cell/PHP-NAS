@@ -133,9 +133,11 @@ function ensure_rel_dir(string $rel): string {
         if (!is_dir($cur) && !@mkdir($cur)) throw new RuntimeException('Не удалось создать папку');
     }
     $rp = realpath($cur);
-    if ($rp !== false && inside($rp)) return $rp;
-    if ($rp !== false && via_link($cur)) return $cur;
-    throw new RuntimeException('bad path');
+    if ($rp === false) throw new RuntimeException('bad path');
+    $w = link_walk($cur);
+    if ($w === true) return $cur;
+    if ($w === false || !inside($rp)) throw new RuntimeException('bad path');
+    return $rp;
 }
 // диск/шара, на которой реально лежит путь: «d:» или «\\\\server\\share»
 function vol_of(string $p): string {
