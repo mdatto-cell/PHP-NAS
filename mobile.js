@@ -83,3 +83,22 @@ document.head.append(Object.assign(document.createElement('style'), {textContent
   const tx = $('#topx');
   if (tx) new MutationObserver(() => tx.querySelectorAll('#btnEmpty, #btnShAll').forEach(b => { if (!b.title) b.title = b.textContent.trim(); b.setAttribute('aria-label', b.title); })).observe(tx, {childList: true, subtree: true});
 }
+
+/* iOS иногда всё равно масштабирует по двойному тапу (если между тапами перерисовался DOM).
+   Второй быстрый тап рядом с первым гасим (preventDefault) и сами отдаём click — двойное нажатие
+   в списках продолжает работать, а страница не масштабируется. Только в списках разделов; остальное защищает touch-action в ui3.css. */
+{
+  let t0 = 0, x0 = 0, y0 = 0;
+  document.addEventListener('touchend', e => {
+    if (e.touches.length || e.changedTouches.length !== 1) { t0 = 0; return; }
+    const t = e.changedTouches[0], now = Date.now();
+    const dbl = now - t0 < 450 && Math.abs(t.clientX - x0) < 40 && Math.abs(t.clientY - y0) < 40;
+    t0 = dbl ? 0 : now; x0 = t.clientX; y0 = t.clientY;
+    if (!dbl) return;
+    const el = e.target;
+    if (!el || !el.closest || !el.closest('#list, #favv, #sharev, #trashv') || el.closest('input, textarea, select')) return;   // только списки разделов
+    e.preventDefault();
+    // не el.click(): у SVG-иконок (папки, документы в плитках) этого метода нет
+    el.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true, view: window, clientX: t.clientX, clientY: t.clientY, screenX: t.screenX, screenY: t.screenY}));
+  }, {passive: false, capture: true});
+}

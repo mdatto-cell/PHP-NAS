@@ -158,7 +158,10 @@ Object.values(bars).forEach(b => b.addEventListener('click', async e => {
   e.stopPropagation();
   const s = cur(); if (!s) return;
   if (x.dataset.x === 'cancel') return clear(s);
-  if (x.dataset.x === 'all') return selectAll(s);
+  if (x.dataset.x === 'all') {   // повторное нажатие, когда выбрано всё, — снять выбор (панель закрывается)
+    const its = s.items();
+    return its.length && its.every(i => s.sel.has(s.key(i))) ? clear(s) : selectAll(s);
+  }
   const pool = mode === 'trash' ? (T.items || []) : (($(s.el)._all) || s.items());
   const its = pool.filter(i => s.sel.has(s.key(i)));
   if (!its.length) return clear(s);
@@ -177,6 +180,10 @@ document.addEventListener('keydown', e => {
   if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') { e.preventDefault(); selectAll(s); }
   else if (e.key === 'Escape' && s.sel.size) { clear(s); }
+  else if (e.key === 'Enter' && s.sel.size === 1) {   // Enter — открыть выбранный объект, как двойной клик
+    const it = (mode === 'trash' ? (T.items || T.L || []) : selPool(s)).find(i => s.sel.has(s.key(i)));
+    const f = window.SECOPEN && SECOPEN[mode]; if (it && f) { e.preventDefault(); f(it); }
+  }
 });
 // для меню «⋮» / правой кнопки в «Избранном» и «Общем доступе» (viewer.js, share.js):
 // если объект среди выбранных — действие для всех выбранных, иначе только для него; выбор не меняется
@@ -185,6 +192,7 @@ window.SELX = {
   multi: (k, it) => { const s = SECT[k]; return !!s && s.sel.size > 1 && s.sel.has(s.key(it)); },
   targets: (k, it) => { const s = SECT[k]; return (s && s.sel.has(s.key(it))) ? selPool(s) : [it]; },
   clear: k => { const s = SECT[k]; if (s) { s.sel = new Set(); sync(); } },
+  only: (k, it) => { const s = SECT[k]; if (s) { s.sel = new Set([s.key(it)]); sync(); } },
   dl: its => dlAll(its),
 };
 // кнопка «Загрузить» — только в «Файлах»: после загрузки любого раздела (в т.ч. при открытии #trash по F5)

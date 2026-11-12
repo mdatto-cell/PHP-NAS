@@ -906,17 +906,23 @@ favPanel.addEventListener('click', async e => {
   if ((x = g('data-u'))) { e.stopPropagation(); await favToggle(items[+x.dataset.u].p); return; }
   if ((x = g('data-z'))) { e.stopPropagation(); zipDownload(items[+x.dataset.z].p); return; }
   if ((x = g('data-dl'))) { e.stopPropagation(); dlFile(fileUrl(items[+x.dataset.dl].p, true)); return; }
-  const row = e.target.closest('.frow'); if (!row) return;
-  const it = items[+row.dataset.k];
+  const row = e.target.closest('.frow');
+  if (!row) { if (!e.target.closest('button, a, input') && window.SELX) SELX.clear('fav'); return; }   // пустое место — снять выбор
+  const it = items[+row.dataset.k]; if (!it) return;
   if (e.target.closest('.more')) { e.stopPropagation(); favMenu(e, it); return; }
-  favOpen(it);
+  // одинарный клик — выделение, двойной — открыть (как в «Файлах»)
+  if (favTap(it.p)) { if (window.SELX) SELX.clear('fav'); favOpen(it); }
+  else if (window.SELX) SELX.only('fav', it);
 });
+const favTap = dblTap();
+(window.SECOPEN = window.SECOPEN || {}).fav = it => favOpen(it);
 favPanel.addEventListener('contextmenu', e => {
   const row = e.target.closest('.frow'); if (!row || e.target.closest('.ck')) return;
   const it = (favPanel._items || [])[+row.dataset.k]; if (it) favMenu(e, it);
 });
 function favOpen(it) {
   if (it.d) { favHide(); location.hash = hashFor(it.p); return; }
+  if (!canView(it.n)) return filePreview(it);
   // панель «Избранное» не закрываем: просмотрщик открывается поверх неё, после закрытия возвращаемся в «Избранное»
   vlist.length = 0; vlist.push({n: it.n, p: it.p, s: it.s}); vi = 0;
   $('#viewer').classList.add('overfav'); $('#viewer').hidden = false; showV();
@@ -1056,7 +1062,10 @@ document.head.append(Object.assign(document.createElement('style'), {textContent
       case 'move': await doMove(ts); break;
       case 'del': await doDelete(ts); break;
       case 'cancel': clearSel(); break;
-      case 'all': L.forEach(i => sel.add(i.n)); markSel(); syncSel(); break;
+      case 'all':   // повторное нажатие, когда выбрано всё, — снять выбор (панель закрывается)
+        if (L.length && L.every(i => sel.has(i.n))) clearSel();
+        else { L.forEach(i => sel.add(i.n)); markSel(); syncSel(); }
+        break;
     }
     later();
   });

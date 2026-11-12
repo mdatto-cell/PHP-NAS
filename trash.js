@@ -44,13 +44,31 @@ function tMenu(e, its = tSelItems()) {
     }, 'flame'],
   ]);
 }
+// одинарный клик — выделение, двойной — окно со сведениями и кнопкой «Восстановить» (как в «Файлах»)
+const trTap = dblTap();
 $('#trashv').addEventListener('click', e => {
-  const row = e.target.closest('.trow'); if (!row) return;
-  const it = T.L[+row.dataset.i];
+  const row = e.target.closest('.trow');
+  if (!row) { if (T.sel.size && !e.target.closest('button, a, input')) { T.sel = new Set(); drawTrash(); } return; }   // пустое место — снять выбор
+  const it = T.L[+row.dataset.i]; if (!it) return;
   if (e.target.closest('.more')) return tMenu(e, tTargets(it));
-  if (e.ctrlKey || e.metaKey) T.sel.has(it.id) ? T.sel.delete(it.id) : T.sel.add(it.id); else T.sel = new Set([it.id]);
+  if (e.ctrlKey || e.metaKey) { trTap.reset(); T.sel.has(it.id) ? T.sel.delete(it.id) : T.sel.add(it.id); drawTrash(); return; }
+  if (trTap(it.id)) { T.sel = new Set(); drawTrash(); return trashInfo(it); }
+  T.sel = new Set([it.id]);
   drawTrash();
 });
+function trashInfo(it) {
+  const meta = [it.d ? 'Папка' : fmtSize(it.s), it.t ? 'удалено ' + fmtDate(it.t) : ''].filter(Boolean).join(' · ');
+  const ov = mkOvl(`<button class="dx" data-x="c">${ico('close')}</button><div class="fpv"><div class="ic">${it.d ? FOLDER : fileSvg(kindOf(it.name))}</div></div>` +
+    `<h3 class="fpvn">${esc(it.name)}</h3><p class="dtext fpvm">${esc(meta)}${it.orig ? '<br>Откуда: ' + esc(it.orig) : ''}</p>` +
+    `<div class="dbtns"><button class="dbtn primary" data-x="rs">${ico('restore')}<span>Восстановить</span></button><button class="dbtn" data-x="c">Закрыть</button></div>`, () => ov.close());
+  ov.addEventListener('click', async e => {
+    const x = e.target.closest('[data-x]'); if (!x) return;
+    ov.close();
+    if (x.dataset.x === 'rs') { await api('restore', {ids: [it.id]}); showTrash(); }
+  });
+  ov.querySelector('[data-x=rs]').focus();
+}
+(window.SECOPEN = window.SECOPEN || {}).trash = it => trashInfo(it);
 $('#trashv').addEventListener('contextmenu', e => {
   const row = e.target.closest('.trow'); if (!row) return;
   const it = T.L[+row.dataset.i];

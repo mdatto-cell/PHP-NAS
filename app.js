@@ -248,14 +248,24 @@ const markSel = () => document.querySelectorAll('#list .row').forEach(r => r.cla
 const targetsOf = () => L.filter(i => sel.has(i.n)).map(it => ({p: join(cwd, it.n), n: it.n, d: it.d, it}));
 const menuTargets = it => sel.has(it.n) ? targetsOf() : [{p: join(cwd, it.n), n: it.n, d: it.d, it}];
 
+// Одинарный клик (тап) — выделение, двойной — открыть папку / просмотр / окно файла.
+// Двойной считаем сами по времени: на телефонах dblclick приходит ненадёжно.
+// Детектор двойного нажатия по одному и тому же объекту (общий для всех разделов)
+const dblTap = () => { let l = {k: null, t: 0}; const f = k => { const n = Date.now(), d = l.k === k && n - l.t < 450; l = d ? {k: null, t: 0} : {k, t: n}; return d; }; f.reset = () => { l = {k: null, t: 0}; }; return f; };
+const canView = n => { const e = ext(n); return IMG.has(e) || VID.has(e) || AUD.has(e) || TXT.has(e) || e === 'pdf'; };
+const filesTap = dblTap();
 $('#list').addEventListener('click', e => {
-  const row = e.target.closest('.row'); if (!row) return;
-  const it = L[+row.dataset.i];
+  const row = e.target.closest('.row');
+  if (!row) {   // клик по пустому месту списка снимает выбор
+    if (mode === 'files' && sel.size && !e.target.closest('button, a, input')) { sel = new Set(); markSel(); }
+    return;
+  }
+  const it = L[+row.dataset.i]; if (!it) return;
   // «⋮» не меняет выбор: меню для всех выбранных, если объект среди них, иначе только для этого объекта
   if (e.target.closest('.more')) return popMenu(e, menuFor(menuTargets(it)));
-  if (e.ctrlKey || e.metaKey) { sel.has(it.n) ? sel.delete(it.n) : sel.add(it.n); return markSel(); }
-  if (sel.size) { sel = new Set(); markSel(); }
-  openIt(it);
+  if (e.ctrlKey || e.metaKey) { filesTap.reset(); sel.has(it.n) ? sel.delete(it.n) : sel.add(it.n); return markSel(); }
+  if (filesTap(it.n)) { sel = new Set(); markSel(); return openIt(it); }
+  sel = new Set([it.n]); markSel();
 });
 $('#list').addEventListener('contextmenu', e => {
   const row = e.target.closest('.row'); if (!row) return;
@@ -265,9 +275,21 @@ $('#list').addEventListener('contextmenu', e => {
 
 function openIt(it) {
   if (it.d) { location.hash = hashFor(join(cwd, it.n)); return; }
-  const e = ext(it.n);
-  if (IMG.has(e) || VID.has(e) || AUD.has(e) || TXT.has(e) || e === 'pdf') return openViewer(it);
-  location = fileUrl(join(cwd, it.n), true);
+  if (canView(it.n)) return openViewer(it);
+  filePreview(it);
+}
+// Файл без просмотрщика: окно с иконкой, размером и кнопкой «Скачать» вместо скачивания сразу
+function filePreview(it) {
+  const p = it.p ?? join(cwd, it.n);
+  const ov = mkOvl(`<button class="dx" data-x="c">${ico('close')}</button><div class="fpv">${rowIcon(it, p)}</div>` +
+    `<h3 class="fpvn">${esc(it.n)}</h3><p class="dtext fpvm">${[it.s != null ? fmtSize(it.s) : '', it.m ? fmtDate(it.m) : ''].filter(Boolean).join(' · ')}</p>` +
+    `<div class="dbtns"><button class="dbtn primary" data-x="dl">${ico('download')}<span>Скачать</span></button><button class="dbtn" data-x="c">Закрыть</button></div>`, () => ov.close());
+  ov.addEventListener('click', e => {
+    const x = e.target.closest('[data-x]'); if (!x) return;
+    ov.close();
+    if (x.dataset.x === 'dl') location = fileUrl(p, true);
+  });
+  ov.querySelector('[data-x=dl]').focus();
 }
 
 /* ---------- контекстное меню: пункт = [текст, действие, иконка] ---------- */
@@ -404,6 +426,7 @@ document.addEventListener('keydown', e => {
   if (mode !== 'files' || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
   if (e.key === 'Delete' && sel.size) doDelete(targetsOf());
   else if (e.key === 'F2' && sel.size === 1) doRename(targetsOf()[0]);
+  else if (e.key === 'Enter' && sel.size === 1) { e.preventDefault(); openIt(targetsOf()[0].it); }
   else if (e.key === 'Escape') { sel = new Set(); markSel(); }
   else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') { e.preventDefault(); L.forEach(i => sel.add(i.n)); markSel(); }
 });

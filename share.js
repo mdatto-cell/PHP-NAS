@@ -372,17 +372,23 @@ panel.addEventListener('click', async e => {
   let x;
   if ((x = g('data-l'))) { e.stopPropagation(); revoke(items[+x.dataset.l].p); return; }
   if ((x = g('data-c'))) { e.stopPropagation(); copyLink(items[+x.dataset.c].t); return; }
-  const row = e.target.closest('.srow'); if (!row) return;
-  const it = items[+row.dataset.k];
+  const row = e.target.closest('.srow');
+  if (!row) { if (!e.target.closest('button, a, input') && window.SELX) SELX.clear('shares'); return; }   // пустое место — снять выбор
+  const it = items[+row.dataset.k]; if (!it) return;
   if (e.target.closest('.more')) { e.stopPropagation(); shMenu(e, it); return; }
-  shOpen(it);
+  // одинарный клик — выделение, двойной — открыть (как в «Файлах»)
+  if (shTap(it.p)) { if (window.SELX) SELX.clear('shares'); shOpen(it); }
+  else if (window.SELX) SELX.only('shares', it);
 });
+const shTap = dblTap();
+(window.SECOPEN = window.SECOPEN || {}).shares = it => shOpen(it);
 panel.addEventListener('contextmenu', e => {
   const row = e.target.closest('.srow'); if (!row || e.target.closest('.ck')) return;
   const it = (panel._items || [])[+row.dataset.k]; if (it) shMenu(e, it);
 });
 function shOpen(it) {
   if (it.d) { shHide(); location.hash = hashFor(it.p); return; }
+  if (!canView(it.n)) return filePreview(it);
   vlist.length = 0; vlist.push({n: it.n, p: it.p, s: it.s}); vi = 0;
   $('#viewer').classList.add('overshare'); $('#viewer').hidden = false; showV();
 }

@@ -89,3 +89,15 @@ body.mode-photos #photos { padding-right: 72px; }
 .grid .row .more { opacity: 0; transition: opacity .12s; }
 .grid .row:hover .more, .grid .row.sel .more { opacity: 1; }
 @media (hover: none) { .grid .row .more { opacity: 1; } }
+/* одинарный тап — выделение, двойной — открыть: без задержки и зума по двойному тапу, без выделения текста */
+html, body, body * { touch-action: manipulation; }   /* весь интерфейс: щипок работает, зума по двойному тапу нет */
+:is(#list, #favv, #sharev, #trashv) .row { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* окно файла без просмотрщика */
+.fpv { display: flex; justify-content: center; margin: 8px 0 12px; }
+.fpv .ic { width: 96px !important; height: 96px !important; position: relative; display: flex; align-items: center; justify-content: center; }
+.fpv .ic svg { width: 100%; height: 100%; }
+.dlg2 h3.fpvn { text-align: center; margin: 0 8px 6px; word-break: break-word; }
+.fpvm { text-align: center; margin-bottom: 16px; }
+.dlg2 .fpvn + .fpvm ~ .dbtns { justify-content: center; }
+.fpv ~ .dbtns .dbtn { display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; }
+.fpv ~ .dbtns .dbtn .ic-svg { width: 18px; height: 18px; flex: none; }
