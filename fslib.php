@@ -9,7 +9,7 @@ function app_db(): PDO {
     static $db = null;
     if ($db === null) {
         $dir = (string)cfg('data'); ensure_dir($dir);
-        $db = new PDO('sqlite:' . $dir . '\\main.sqlite');
+        $db = new PDO('sqlite:' . $dir . DS . 'main.sqlite');
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $db->exec('PRAGMA busy_timeout=15000');
         $db->exec('PRAGMA journal_mode=WAL');
@@ -79,13 +79,13 @@ function idx_move(string $old, string $new): void {
 
 /* ---------- файловые операции ---------- */
 function unique_path(string $dir, string $name, bool $isDir): string {
-    $t = $dir . '\\' . $name;
+    $t = $dir . DS . $name;
     if (!file_exists($t)) return $t;
     $pi = pathinfo($name);
     $base = $isDir ? $name : $pi['filename'];
     $ext = (!$isDir && isset($pi['extension'])) ? '.' . $pi['extension'] : '';
     for ($i = 1; $i < 10000; $i++) {
-        $t = $dir . '\\' . "$base ($i)$ext";
+        $t = $dir . DS . "$base ($i)$ext";
         if (!file_exists($t)) return $t;
     }
     throw new RuntimeException('Не удалось подобрать имя');
@@ -101,7 +101,7 @@ function copy_tree(string $src, string $dst, int $depth = 0): bool {
     if (!@mkdir($dst)) return false;
     foreach (scandir($src) ?: [] as $n) {
         if ($n === '.' || $n === '..') continue;
-        if (!copy_tree($src . '\\' . $n, $dst . '\\' . $n, $depth + 1)) return false;
+        if (!copy_tree($src . DS . $n, $dst . DS . $n, $depth + 1)) return false;
     }
     return true;
 }
@@ -113,11 +113,11 @@ function rrmdir(string $p): bool {
     $pp = realpath($p); if ($pp === false) return false;   // внутри ссылки реальный путь отличается от $p — сравниваем с реальным
     foreach (scandir($p) ?: [] as $n) {
         if ($n === '.' || $n === '..') continue;
-        $c = $p . '\\' . $n;
+        $c = $p . DS . $n;
         if (is_link($c)) { @unlink($c) || @rmdir($c); continue; }
         if (is_dir($c)) {
             $rp = realpath($c);
-            if ($rp === false || stripos($rp, $pp . '\\') !== 0) { @rmdir($c); continue; }
+            if ($rp === false || !p_pre($rp, $pp . DS)) { @rmdir($c); continue; }
             $ok = rrmdir($c) && $ok;
         } else {
             if (!@unlink($c)) { @chmod($c, 0666); $ok = @unlink($c) && $ok; }
@@ -129,7 +129,7 @@ function ensure_rel_dir(string $rel): string {
     $rel = clean_rel($rel);
     $cur = root();
     foreach ($rel === '' ? [] : explode('/', $rel) as $s) {
-        $cur .= '\\' . $s;
+        $cur .= DS . $s;
         if (!is_dir($cur) && !@mkdir($cur)) throw new RuntimeException('Не удалось создать папку');
     }
     $rp = realpath($cur);
@@ -142,6 +142,7 @@ function ensure_rel_dir(string $rel): string {
 // диск/шара, на которой реально лежит путь: «d:» или «\\\\server\\share»
 function vol_of(string $p): string {
     $r = realpath($p); if ($r === false) return '';
+    if (!IS_WIN) { $s = @stat($r); return $s ? 'dev' . $s['dev'] : ''; }   // Linux: номер устройства
     if (preg_match('~^\\\\\\\\[^\\\\]+\\\\[^\\\\]+~', $r, $m)) return strtolower($m[0]);
     return strtolower(substr($r, 0, 2));
 }
@@ -154,10 +155,10 @@ function move_path(string $src, string $dst): bool {
     if (!(is_dir($src) ? rrmdir($src) : @unlink($src))) error_log("move_path: скопировано, но исходное удалено не полностью: $src");
     return true;
 }
-function rel_of(string $full): string { return str_replace('\\', '/', substr($full, strlen(root()) + 1)); }
+function rel_of(string $full): string { return str_replace(DS, '/', substr($full, strlen(root()) + 1)); }
 
 /* ---------- корзина ---------- */
-function trash_dir(): string { $t = root() . '\\.trash'; ensure_dir($t); return $t; }
+function trash_dir(): string { $t = root() . DS . '.trash'; ensure_dir($t); return $t; }
 function valid_tid(string $id): bool {
     return $id !== '' && $id !== '.' && $id !== '..' && !preg_match('/[\\\\\/:*?"<>|\x00-\x1f]/u', $id);
 }
@@ -169,7 +170,7 @@ function thumb_forget(string $full, int $depth = 0): void {
     if (is_dir($full)) {
         foreach (scandir($full) ?: [] as $n) {
             if ($n === '.' || $n === '..') continue;
-            thumb_forget($full . '\\' . $n, $depth + 1);
+            thumb_forget($full . DS . $n, $depth + 1);
         }
         return;
     }
@@ -180,7 +181,7 @@ function thumb_forget(string $full, int $depth = 0): void {
     if ($mt === false || $sz === false) return;
     foreach ([320, 1600] as $w) {
         $key = sha1($full . '|' . $mt . '|' . $sz . '|' . $w);
-        $jpg = cfg('data') . '\\cache\\' . substr($key, 0, 2) . '\\' . $key . '.jpg';
+        $jpg = cfg('data') . DS . 'cache' . DS . substr($key, 0, 2) . DS . $key . '.jpg';
         foreach ([$jpg, $jpg . '.fail', $jpg . '.tmp.jpg'] as $x) if (is_file($x)) @unlink($x);
     }
 }
@@ -192,7 +193,7 @@ function thumb_move(string $from, string $to, int $depth = 0): void {
     if (is_dir($to)) {
         foreach (scandir($to) ?: [] as $n) {
             if ($n === '.' || $n === '..') continue;
-            thumb_move($from . '\\' . $n, $to . '\\' . $n, $depth + 1);
+            thumb_move($from . DS . $n, $to . DS . $n, $depth + 1);
         }
         return;
     }
@@ -201,10 +202,10 @@ function thumb_move(string $from, string $to, int $depth = 0): void {
     if (!in_array(ext_of($to), $types, true)) return;
     $mt = @filemtime($to); $sz = @filesize($to);
     if ($mt === false || $sz === false) return;
-    $cache = cfg('data') . '\\cache\\';
+    $cache = cfg('data') . DS . 'cache' . DS;
     foreach ([320, 1600] as $w) {
         $ok = sha1($from . '|' . $mt . '|' . $sz . '|' . $w); $nk = sha1($to . '|' . $mt . '|' . $sz . '|' . $w);
-        $old = $cache . substr($ok, 0, 2) . '\\' . $ok . '.jpg'; $new = $cache . substr($nk, 0, 2) . '\\' . $nk . '.jpg';
+        $old = $cache . substr($ok, 0, 2) . DS . $ok . '.jpg'; $new = $cache . substr($nk, 0, 2) . DS . $nk . '.jpg';
         if (is_file($old)) { ensure_dir(dirname($new)); if (!@rename($old, $new)) @unlink($old); }
         foreach ([$old . '.fail', $old . '.tmp.jpg'] as $x) if (is_file($x)) @unlink($x);
     }
@@ -215,9 +216,9 @@ function trash_put(string $src, string $rel): bool {
     $name = basename($src);
     $size = $isDir ? 0 : (int)@filesize($src);
     $tname = date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . '_' . mb_substr($name, 0, 100);
-    if (!move_path($src, trash_dir() . '\\' . $tname)) return false;
+    if (!move_path($src, trash_dir() . DS . $tname)) return false;
     // превью не удаляем, а переносим на путь в корзине: они показываются в «Корзине» и возвращаются при восстановлении
-    try { thumb_move($src, trash_dir() . '\\' . $tname); } catch (Throwable $e) { error_log('thumb_move: ' . $e->getMessage()); }
+    try { thumb_move($src, trash_dir() . DS . $tname); } catch (Throwable $e) { error_log('thumb_move: ' . $e->getMessage()); }
     try {
         app_db()->prepare('INSERT OR REPLACE INTO trash(tname,orig,name,dir,size,ts,user) VALUES(?,?,?,?,?,?,?)')
             ->execute([$tname, $rel, $name, $isDir ? 1 : 0, $size, time(), $_SESSION['u'] ?? '']);
@@ -231,7 +232,7 @@ function trash_list(): array {
     $out = []; $seen = [];
     foreach (scandir($dir) ?: [] as $n) {
         if ($n === '.' || $n === '..') continue;
-        $f = $dir . '\\' . $n; $seen[$n] = 1;
+        $f = $dir . DS . $n; $seen[$n] = 1;
         if (isset($meta[$n])) {
             $m = $meta[$n];
             $out[] = ['id' => $n, 'name' => $m['name'], 'd' => (bool)$m['dir'], 's' => (int)$m['size'], 't' => (int)$m['ts'], 'orig' => (string)$m['orig']];
@@ -252,7 +253,7 @@ function trash_list(): array {
 }
 function trash_restore(string $id): ?string {
     if (!valid_tid($id)) return null;
-    $src = trash_dir() . '\\' . $id;
+    $src = trash_dir() . DS . $id;
     $db = app_db();
     $s = $db->prepare('SELECT * FROM trash WHERE tname=?'); $s->execute([$id]);
     $m = $s->fetch(PDO::FETCH_ASSOC);
@@ -272,7 +273,7 @@ function trash_restore(string $id): ?string {
 }
 function trash_purge(string $id, bool $log = true): bool {
     if (!valid_tid($id)) return false;
-    $p = trash_dir() . '\\' . $id;
+    $p = trash_dir() . DS . $id;
     $db = app_db();
     $s = $db->prepare('SELECT * FROM trash WHERE tname=?'); $s->execute([$id]);
     $m = $s->fetch(PDO::FETCH_ASSOC);

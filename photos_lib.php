@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 function photos_db(): PDO {
     $dir = (string)cfg('data'); ensure_dir($dir);
-    $db = new PDO('sqlite:' . $dir . '\\photos.sqlite');
+    $db = new PDO('sqlite:' . $dir . DS . 'photos.sqlite');
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $db->exec('PRAGMA busy_timeout=15000');
     $db->exec('PRAGMA journal_mode=WAL');
@@ -27,9 +27,9 @@ function meta_set(PDO $db, string $k, string $v): void {
 function run_capture(array $cmd, ?string $stdin_file, int $timeout = 30): ?string {
     $o = tempnam(sys_get_temp_dir(), 'oc');
     $desc = [
-        0 => $stdin_file ? ['file', $stdin_file, 'r'] : ['file', 'NUL', 'r'],
+        0 => $stdin_file ? ['file', $stdin_file, 'r'] : ['file', NULDEV, 'r'],
         1 => ['file', $o, 'w'],
-        2 => ['file', 'NUL', 'w'],
+        2 => ['file', NULDEV, 'w'],
     ];
     $p = @proc_open($cmd, $desc, $pipes, null, null, ['bypass_shell' => true]);
     if (!is_resource($p)) { @unlink($o); return null; }

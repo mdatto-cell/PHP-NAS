@@ -39,5 +39,47 @@ const FILEGLYPH = {
 const FOLDER = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M4 12a4 4 0 0 1 4-4h11l4 4h17a4 4 0 0 1 4 4v22a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z" fill="#e8a923"/><path d="M4 19a4 4 0 0 1 4-4h32a4 4 0 0 1 4 4v19a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z" fill="#ffd45e"/></svg>';
 // папка-ссылка (mklink /D) — та же папка со значком «планета Земля» (шара) на передней стороне
 const FOLDER_LNK = FOLDER.replace('</svg>', '<g fill="none" stroke="#9a6a06" stroke-width="1.9" stroke-linecap="round"><circle cx="24" cy="29" r="8.6"/><ellipse cx="24" cy="29" rx="3.6" ry="8.6"/><path d="M15.4 29h17.2M16.6 24.6h14.8M16.6 33.4h14.8"/></g></svg>');
-const fileSvg = k => FILEGLYPH[k] || FILEGLYPH.doc;
+// Иконки файлов по типу: светлый лист, цветной уголок и плашка с расширением
+const FT_TYPES = [
+  ['#f05542', 'pdf'],
+  ['#2b7cd3', 'doc docx docm dot dotx odt rtf pages'],
+  ['#1f9d55', 'xls xlsx xlsm xlsb ods csv numbers'],
+  ['#e8742a', 'ppt pptx pptm odp key'],
+  ['#8a94a6', 'txt log md ini cfg conf nfo srt'],
+  ['#6c5ce7', 'json xml html htm js css php py sh ps1 bat cmd sql yml yaml reg vbs'],
+  ['#d99a1e', 'zip rar 7z tar gz tgz bz2 xz cab iso img'],
+  ['#e0457b', 'mp3 m4a flac ogg wav opus aac wma ape'],
+  ['#7a5cd6', 'mp4 m4v mov webm mkv avi wmv mpg mpeg ts 3gp'],
+  ['#2fa39a', 'jpg jpeg png gif webp avif bmp heic heif tif tiff svg psd raw cr2 nef dng'],
+  ['#4b5563', 'exe msi dmg apk deb rpm appx'],
+  ['#0e7490', 'eml msg pst ics vcf'],
+  ['#b45309', 'ttf otf woff woff2'],
+  ['#be123c', 'epub fb2 mobi djvu'],
+  ['#475569', 'torrent lnk url'],
+];
+const FT_COLOR = {};
+FT_TYPES.forEach(([c, l]) => l.split(' ').forEach(e => { FT_COLOR[e] = c; }));
+const FT_KIND = {image: ['#2fa39a', 'IMG'], video: ['#7a5cd6', 'VIDEO'], audio: ['#e0457b', 'AUDIO'], pdf: ['#f05542', 'PDF']};
+const FT_PAGE = '<path d="M14 3h16l9 9v29a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4z" fill="#ececec"/>';
+const ftBadge = (c, t) => {
+  const n = t.length, fs = n <= 3 ? 10.5 : n === 4 ? 8.6 : 7.2;
+  return `<svg viewBox="0 0 48 48" aria-hidden="true">${FT_PAGE}<path d="M30 3l9 9h-7a2 2 0 0 1-2-2z" fill="${c}"/>` +
+    `<rect x="4.5" y="20" width="35" height="14.5" rx="4" fill="${c}"/>` +
+    `<text x="22" y="${(27.25 + fs * 0.36).toFixed(2)}" font-size="${fs}" text-anchor="middle" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-weight="700" letter-spacing=".3">${t}</text></svg>`;
+};
+const FT_GENERIC = `<svg viewBox="0 0 48 48" aria-hidden="true">${FT_PAGE}<path d="M30 3l9 9h-7a2 2 0 0 1-2-2z" fill="#b9bfca"/>` +
+  '<path d="M17 22h15M17 27.5h15M17 33h10" stroke="#9aa1ad" stroke-width="2.4" stroke-linecap="round"/></svg>';
+const FT_CACHE = {};
+// fileSvg(имя файла | расширение | вид 'image'/'video'/'audio'/'pdf'/'doc')
+const fileSvg = x => {
+  x = String(x || '');
+  if (FT_CACHE[x]) return FT_CACHE[x];
+  let r;
+  if (FT_KIND[x]) r = ftBadge(...FT_KIND[x]);
+  else {
+    const i = x.lastIndexOf('.'), e = (i >= 0 ? x.slice(i + 1) : x).toLowerCase();
+    r = FT_COLOR[e] && /^[a-z0-9]{1,5}$/.test(e) ? ftBadge(FT_COLOR[e], e.toUpperCase()) : FT_GENERIC;
+  }
+  return FT_CACHE[x] = r;
+};
 document.querySelectorAll('[data-i]').forEach(e => { e.innerHTML = ico(e.dataset.i); });

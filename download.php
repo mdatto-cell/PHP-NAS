@@ -22,7 +22,7 @@ if (is_file($full)) {
 if (!class_exists('ZipArchive')) dl_fail(500, 'В PHP не включено расширение zip (extension=zip в php.ini)');
 
 $name = ($rel === '' ? 'Файлы' : basename($full));
-$tmpdir = cfg('data') . '\\tmp'; ensure_dir($tmpdir);
+$tmpdir = cfg('data') . DS . 'tmp'; ensure_dir($tmpdir);
 $tmp = tempnam($tmpdir, 'zip');
 if ($tmp === false) dl_fail(500, 'Нет доступа к папке временных файлов');
 // удалить архив при любом завершении: успех, ошибка, обрыв скачивания клиентом
@@ -38,7 +38,7 @@ function zip_walk(ZipArchive $zip, string $dir, string $prefix, int $depth, int 
     if (count($entries) <= 2) { $zip->addEmptyDir(rtrim($prefix, '/')); return; }
     foreach ($entries as $n) {
         if ($n === '.' || $n === '..' || is_hidden($n)) continue;
-        $f = $dir . '\\' . $n;
+        $f = $dir . DS . $n;
         if (is_link($f)) continue;
         if (is_dir($f)) { zip_walk($zip, $f, $prefix . $n . '/', $depth + 1, $count); }
         elseif (is_file($f)) {

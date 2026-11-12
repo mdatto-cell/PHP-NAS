@@ -47,7 +47,7 @@ try {
         $items = [];
         foreach (scandir($full) ?: [] as $n) {
             if ($n === '.' || $n === '..' || is_hidden($n)) continue;
-            $f = $full . '\\' . $n;
+            $f = $full . DS . $n;
             $d = is_dir($f);
             $it = ['n' => $n, 'd' => $d, 's' => $d ? 0 : (int)@filesize($f), 'm' => (int)@filemtime($f)];
             if (is_share_link($f)) $it['l'] = 1;   // папка-ссылка (mklink /D) — значок «шары»
@@ -62,14 +62,14 @@ try {
         $dirs = [];
         foreach (scandir($full) ?: [] as $n) {
             if ($n === '.' || $n === '..' || is_hidden($n)) continue;
-            $f = $full . '\\' . $n;
+            $f = $full . DS . $n;
             if (!is_dir($f)) continue;
             $h = false;
             if ($dh = @opendir($f)) {
                 $seen = 0;
                 while (($c = readdir($dh)) !== false) {
                     if ($c === '.' || $c === '..' || is_hidden($c)) continue;
-                    if (is_dir($f . '\\' . $c)) { $h = true; break; }
+                    if (is_dir($f . DS . $c)) { $h = true; break; }
                     if (++$seen >= 5000) { $h = true; break; } // очень большая папка — не перебираем до конца
                 }
                 closedir($dh);
@@ -86,7 +86,7 @@ try {
         $name = (string)($in['name'] ?? '');
         if (!valid_name($name)) json_out(['error' => 'Недопустимое имя'], 400);
         [$par, $prel] = resolve((string)($in['p'] ?? ''));
-        $t = $par . '\\' . $name;
+        $t = $par . DS . $name;
         if (file_exists($t)) json_out(['error' => 'Уже существует'], 409);
         if (!mkdir($t)) json_out(['error' => 'Не удалось создать'], 500);
         ev('mkdir', rel_of($t), '', $name, 'd');
@@ -97,8 +97,8 @@ try {
         if (!valid_name($name)) json_out(['error' => 'Недопустимое имя'], 400);
         [$src, $rel] = resolve((string)($in['p'] ?? ''));
         if ($rel === '') json_out(['error' => 'root'], 400);
-        $t = dirname($src) . '\\' . $name;
-        if (file_exists($t) && strcasecmp($t, $src) !== 0) json_out(['error' => 'Уже существует'], 409);
+        $t = dirname($src) . DS . $name;
+        if (file_exists($t) && !p_eq($t, $src)) json_out(['error' => 'Уже существует'], 409);
         $old = basename($src); $isDir = is_dir($src);
         if (!rename($src, $t)) json_out(['error' => 'Не удалось переименовать'], 500);
         $trel = rel_of($t);
@@ -125,8 +125,8 @@ try {
             [$src, $rel] = resolve($p);
             if ($rel === '') continue;
             $isDir = is_dir($src); $nm = basename($src);
-            if ($isDir && (strcasecmp($dst, $src) === 0 || stripos($dst . '\\', $src . '\\') === 0)) { $errs[] = "«$nm»: нельзя поместить папку в саму себя"; continue; }
-            if ($a === 'move' && strcasecmp(dirname($src), $dst) === 0) continue;
+            if ($isDir && (p_eq($dst, $src) || p_pre($dst . DS, $src . DS))) { $errs[] = "«$nm»: нельзя поместить папку в саму себя"; continue; }
+            if ($a === 'move' && p_eq(dirname($src), $dst)) continue;
             $t = unique_path($dst, $nm, $isDir);
             $trel = rel_of($t);
             if ($a === 'move') {

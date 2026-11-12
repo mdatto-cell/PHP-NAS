@@ -211,7 +211,7 @@ function sorted() {
    превью, которого нет (404), запоминается до обновления страницы и сразу рисуется значком,
    а уже загруженные картинки переносятся в новую разметку вместо повторной загрузки */
 const THUMB_BAD = new Set();
-function thumbFail(img, k) { THUMB_BAD.add(img.getAttribute('src')); img.outerHTML = fileSvg(k); }
+function thumbFail(img, k) { THUMB_BAD.add(img.getAttribute('src')); img.outerHTML = fileSvg(img.dataset.n || k); }
 function setHTML(el, html) {
   const old = new Map();
   el.querySelectorAll('.ic > img').forEach(i => { if (i.complete && i.naturalWidth) old.set(i.getAttribute('src'), i); });
@@ -222,10 +222,10 @@ function rowIcon(it, p, extra = '', src = '') {
   if (it.d) return `<div class="ic"${it.l ? ' title="Папка-ссылка"' : ''}>${it.l ? FOLDER_LNK : FOLDER}${extra}</div>`;
   const k = kindOf(it.n);
   const u = src || (k === 'image' ? thumbUrl(it, p, 320) : k === 'video' ? thumbUrl(it, p, 320) + '&c=1' : '');
-  if (u && THUMB_BAD.has(u)) return `<div class="ic${k === 'video' ? ' vid' : ''}">${fileSvg(k)}${k === 'video' ? `<span class="pv">${ico('play')}</span>` : ''}${extra}</div>`;
-  if (k === 'image') return `<div class="ic"><img loading="lazy" src="${src || thumbUrl(it, p, 320)}" alt="" onerror="thumbFail(this,'image')">${extra}</div>`;
-  if (k === 'video') return `<div class="ic vid"><img loading="lazy" src="${src || thumbUrl(it, p, 320) + '&c=1'}" alt="" onerror="thumbFail(this,'video')"><span class="pv">${ico('play')}</span>${extra}</div>`;
-  return `<div class="ic">${fileSvg(k)}${extra}</div>`;
+  if (u && THUMB_BAD.has(u)) return `<div class="ic${k === 'video' ? ' vid' : ''}">${fileSvg(it.n)}${k === 'video' ? `<span class="pv">${ico('play')}</span>` : ''}${extra}</div>`;
+  if (k === 'image') return `<div class="ic"><img loading="lazy" src="${src || thumbUrl(it, p, 320)}" alt="" data-n="${esc(it.n)}" onerror="thumbFail(this,'image')">${extra}</div>`;
+  if (k === 'video') return `<div class="ic vid"><img loading="lazy" src="${src || thumbUrl(it, p, 320) + '&c=1'}" alt="" data-n="${esc(it.n)}" onerror="thumbFail(this,'video')"><span class="pv">${ico('play')}</span>${extra}</div>`;
+  return `<div class="ic">${fileSvg(it.n)}${extra}</div>`;
 }
 function render() {
   if (mode !== 'files') return;

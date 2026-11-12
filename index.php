@@ -56,10 +56,10 @@ boot('page');
   <button id="vprev" class="nav" data-i="chevL"></button><div id="vbody"></div><button id="vnext" class="nav" data-i="chevR"></button>
 </div>
 <div id="uploads" hidden></div>
-<script src="icons.js?v=6"></script>
-<script src="app.js?v=11"></script>
+<script src="icons.js?v=7"></script>
+<script src="app.js?v=12"></script>
 <script src="photos.js?v=5"></script>
-<script src="trash.js?v=6"></script>
+<script src="trash.js?v=7"></script>
 <script src="viewer.js?v=21"></script>
 <script src="share.js?v=8"></script>
 <script src="select.js?v=4"></script>

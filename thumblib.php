@@ -12,8 +12,8 @@ function thumb_info(string $full, int $w): ?array {
     elseif (in_array($ext, $videos, true) && $ffmpeg !== '' && is_file($ffmpeg)) $type = 'vid';
     else return null;
     $key = sha1($full . '|' . filemtime($full) . '|' . filesize($full) . '|' . $w);
-    $dir = cfg('data') . '\\cache\\' . substr($key, 0, 2); ensure_dir($dir);
-    return [$type, $dir . '\\' . $key . '.jpg', $coders[$ext] ?? ''];
+    $dir = cfg('data') . DS . 'cache' . DS . substr($key, 0, 2); ensure_dir($dir);
+    return [$type, $dir . DS . $key . '.jpg', $coders[$ext] ?? ''];
 }
 
 function thumb_make(string $full, int $w, int $wait = 60): ?string {
@@ -23,11 +23,11 @@ function thumb_make(string $full, int $w, int $wait = 60): ?string {
     if (is_file($out)) return $out;
     if (is_file($out . '.fail')) return null;
 
-    $lockdir = cfg('data') . '\\locks'; ensure_dir($lockdir);
+    $lockdir = cfg('data') . DS . 'locks'; ensure_dir($lockdir);
     $slots = max(1, (int)(cfg('thumb_slots') ?? 3)); $lock = null; $t0 = time();
     while ($lock === null && time() - $t0 < $wait) {
         for ($i = 0; $i < $slots; $i++) {
-            $h = fopen($lockdir . "\\slot$i.lock", 'c');
+            $h = fopen($lockdir . DS . "slot$i.lock", 'c');
             if ($h && flock($h, LOCK_EX | LOCK_NB)) { $lock = $h; break; }
             if ($h) fclose($h);
         }

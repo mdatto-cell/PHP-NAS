@@ -8,7 +8,7 @@ $tid = (string)($_GET['t'] ?? '');
 if ($tid !== '') {
     require_once __DIR__ . '/fslib.php';
     if (!valid_tid($tid)) { http_response_code(404); exit; }
-    $full = trash_dir() . '\\' . $tid; $cacheOnly = true;
+    $full = trash_dir() . DS . $tid; $cacheOnly = true;
 } else {
     try { [$full] = resolve((string)($_GET['p'] ?? '')); } catch (RuntimeException $e) { http_response_code(404); exit; }
     $cacheOnly = !empty($_GET['c']);

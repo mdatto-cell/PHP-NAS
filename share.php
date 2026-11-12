@@ -53,7 +53,7 @@ function sh_zip_walk(ZipArchive $zip, string $dir, string $prefix, int $depth, i
     if (count($entries) <= 2) { $zip->addEmptyDir(rtrim($prefix, '/')); return; }
     foreach ($entries as $n) {
         if ($n === '.' || $n === '..' || is_hidden($n)) continue;
-        $f = $dir . '\\' . $n;
+        $f = $dir . DS . $n;
         if (is_link($f)) continue;
         if (is_dir($f)) sh_zip_walk($zip, $f, $prefix . $n . '/', $depth + 1, $count);
         elseif (is_file($f) && $zip->addFile($f, $prefix . $n)) { $zip->setCompressionName($prefix . $n, ZipArchive::CM_STORE); $count++; }
@@ -92,7 +92,7 @@ if (!isset($_GET['dl'])) {
 /* ---------- скачивание ---------- */
 if ($isDir) {
     if (!class_exists('ZipArchive')) sh_page(500, 'Ошибка', '<h1>Ошибка сервера</h1><p class="m">В PHP не включено расширение zip.</p>');
-    $tmpdir = cfg('data') . '\\tmp'; ensure_dir($tmpdir);
+    $tmpdir = cfg('data') . DS . 'tmp'; ensure_dir($tmpdir);
     $send = tempnam($tmpdir, 'shz');
     if ($send === false) sh_page(500, 'Ошибка', '<h1>Ошибка сервера</h1><p class="m">Нет доступа к папке временных файлов.</p>');
     register_shutdown_function(function () use ($send) { if (is_file($send)) @unlink($send); });

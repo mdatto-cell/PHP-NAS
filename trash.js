@@ -27,7 +27,7 @@ function drawTrash() {
   if (!T.items.length) { el.innerHTML = '<div class="tinfo">Корзина пуста</div>'; return; }
   if (!T.L.length) { el.innerHTML = '<div class="tinfo">Ничего не найдено</div>'; return; }
   el.innerHTML = '<div class="tinfo">Объекты хранятся в корзине, пока вы не очистите её (или пока не истечёт срок trash_days, если он задан).</div>' +
-    T.L.map((it, i) => `<div class="row trow${T.sel.has(it.id) ? ' sel' : ''}" data-i="${i}"><div class="ic">${it.d ? FOLDER : fileSvg(kindOf(it.name))}</div>` +
+    T.L.map((it, i) => `<div class="row trow${T.sel.has(it.id) ? ' sel' : ''}" data-i="${i}"><div class="ic">${it.d ? FOLDER : fileSvg(it.name)}</div>` +
       `<div class="nm">${esc(it.name)}<small>${it.orig ? 'из: ' + esc(dirOf(it.orig) || 'Файлы') : 'исходное место неизвестно'}</small></div>` +
       `<div class="dt">${fmtDate(it.t)}</div><div class="sz">${it.d ? '' : fmtSize(it.s)}</div><button class="icon more">${ico('kebab')}</button></div>`).join('');
 }
@@ -58,7 +58,7 @@ $('#trashv').addEventListener('click', e => {
 });
 function trashInfo(it) {
   const meta = [it.d ? 'Папка' : fmtSize(it.s), it.t ? 'удалено ' + fmtDate(it.t) : ''].filter(Boolean).join(' · ');
-  const ov = mkOvl(`<button class="dx" data-x="c">${ico('close')}</button><div class="fpv"><div class="ic">${it.d ? FOLDER : fileSvg(kindOf(it.name))}</div></div>` +
+  const ov = mkOvl(`<button class="dx" data-x="c">${ico('close')}</button><div class="fpv"><div class="ic">${it.d ? FOLDER : fileSvg(it.name)}</div></div>` +
     `<h3 class="fpvn">${esc(it.name)}</h3><p class="dtext fpvm">${esc(meta)}${it.orig ? '<br>Откуда: ' + esc(it.orig) : ''}</p>` +
     `<div class="dbtns"><button class="dbtn primary" data-x="rs">${ico('restore')}<span>Восстановить</span></button><button class="dbtn" data-x="c">Закрыть</button></div>`, () => ov.close());
   ov.addEventListener('click', async e => {

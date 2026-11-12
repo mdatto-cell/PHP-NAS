@@ -4,6 +4,14 @@ declare(strict_types=1);
 $CFG = require dirname(__DIR__) . '/config.php';
 function cfg(string $k) { global $CFG; return $CFG[$k] ?? null; }
 
+// Windows и Linux: разделитель пути, пустое устройство и сравнение путей
+// (на Windows регистр в путях не важен, на Linux важен — «/share» и «/SHARE» разные папки)
+const DS = DIRECTORY_SEPARATOR;
+const IS_WIN = DIRECTORY_SEPARATOR === '\\';
+const NULDEV = IS_WIN ? 'NUL' : '/dev/null';
+function p_eq(string $a, string $b): bool { return IS_WIN ? strcasecmp($a, $b) === 0 : $a === $b; }
+function p_pre(string $p, string $pre): bool { return IS_WIN ? stripos($p, $pre) === 0 : strncmp($p, $pre, strlen($pre)) === 0; }   // $p начинается с $pre
+
 function is_https(): bool {
     return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
@@ -22,7 +30,7 @@ function start_session(): void {
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: same-origin');
     header('X-Frame-Options: SAMEORIGIN');
-    $dir = cfg('data') . '\\sessions';
+    $dir = cfg('data') . DS . 'sessions';
     ensure_dir($dir);
     session_save_path($dir);
     session_name('NASSID');
@@ -52,7 +60,7 @@ function need_csrf(): void {
 /* ---------- безопасные пути ---------- */
 function root(): string {
     static $r = null;
-    if ($r === null) { $r = realpath(cfg('root')); if ($r === false) json_out(['error' => 'root missing'], 500); $r = rtrim($r, '\\'); }
+    if ($r === null) { $r = realpath(cfg('root')); if ($r === false) json_out(['error' => 'root missing'], 500); $r = rtrim($r, DS); }
     return $r;
 }
 function is_hidden(string $n): bool {
@@ -73,7 +81,7 @@ function clean_rel(string $rel): string {
 }
 function inside(string $p): bool {
     $r = root();
-    return $p === $r || stripos($p, $r . '\\') === 0;
+    return $p === $r || p_pre($p, $r . DS);
 }
 /* ---------- символические ссылки (mklink /D) внутри root ----------
    'symlinks' в config.php: false/нет — ссылки, ведущие за пределы root, не открываются (как раньше);
@@ -87,43 +95,44 @@ function link_allowed(string $target): bool {
     foreach ($c as $b) {
         $b = (string)$b; if ($b === '') continue;
         $rb = realpath($b); if ($rb === false) $rb = $b;   // корень сетевой шары (\\\\server\\share) realpath может не разрешить
-        $rb = rtrim(win_norm(str_replace('/', '\\', $rb)), '\\');
-        if (strcasecmp($target, $rb) === 0 || stripos($target, $rb . '\\') === 0) return true;
+        $rb = rtrim(win_norm(str_replace('/', DS, $rb)), DS);
+        if (p_eq($target, $rb) || p_pre($target, $rb . DS)) return true;
     }
     return false;
 }
 // убрать префиксы \\?\ и \\?\UNC\, которые Windows иногда отдаёт для целей ссылок
 function win_norm(string $p): string {
+    if (!IS_WIN) return $p;
     if (stripos($p, '\\\\?\\UNC\\') === 0) return '\\\\' . substr($p, 8);
     if (strpos($p, '\\\\?\\') === 0 || strpos($p, '\\??\\') === 0) return substr($p, 4);
     if (stripos($p, 'UNC\\') === 0) return '\\\\' . substr($p, 4);   // readlink для сетевой цели может вернуть «UNC\server\share»
     return $p;
 }
-function abs_path(string $p): bool { return (bool)preg_match('~^([a-z]:[\\\\/]|\\\\\\\\)~i', $p); }
+function abs_path(string $p): bool { if (!IS_WIN) return $p !== '' && $p[0] === '/'; return (bool)preg_match('~^([a-z]:[\\\\/]|\\\\\\\\)~i', $p); }
 // куда ведёт ссылка: readlink, а если не вышло (junction и т. п.) — realpath; относительная цель — от папки ссылки
 function link_target(string $l): ?string {
     $t = @readlink($l);
     if ($t === false || $t === '') { $t = realpath($l); if ($t === false) return null; }
     $t = win_norm($t);
-    if (!abs_path($t)) $t = dirname($l) . '\\' . $t;
+    if (!abs_path($t)) $t = dirname($l) . DS . $t;
     $rt = realpath($t);
     if ($rt !== false) $t = win_norm($rt);
-    return file_exists($t) ? rtrim($t, '\\') : null;
+    return file_exists($t) ? rtrim($t, DS) : null;
 }
 // проверка всех ссылок на пути root\a\b\...: null — ссылок нет, true — все разрешены, false — есть запрещённая.
 // Ссылка внутрь root разрешена всегда (как раньше), наружу — по 'symlinks'; ссылка на свою же папку или выше — петля.
 function link_walk(string $full): ?bool {
     $r = root();
-    if (stripos($full, $r . '\\') !== 0) return null;
+    if (!p_pre($full, $r . DS)) return null;
     $cur = $r; $any = false;
-    foreach (explode('\\', substr($full, strlen($r) + 1)) as $s) {
+    foreach (explode(DS, substr($full, strlen($r) + 1)) as $s) {
         if ($s === '') continue;
-        $cur .= '\\' . $s;
+        $cur .= DS . $s;
         if (!is_link($cur)) continue;
         $any = true;
         $t = link_target($cur);
         if ($t === null) return false;
-        if (stripos($cur . '\\', $t . '\\') === 0 || stripos($r . '\\', $t . '\\') === 0) return false;
+        if (p_pre($cur . DS, $t . DS) || p_pre($r . DS, $t . DS)) return false;
         if (!inside($t) && !link_allowed($t)) return false;
     }
     return $any ? true : null;
@@ -136,7 +145,7 @@ function is_share_link(string $full): bool { return is_link($full) && link_walk(
 // Через ссылку возвращается путь внутри root (root\Ссылка\...), а не цель ссылки — избранное, история и превью работают как обычно.
 function resolve(string $rel, bool $existing = true): array {
     $rel = clean_rel($rel);
-    $full = $rel === '' ? root() : root() . '\\' . str_replace('/', '\\', $rel);
+    $full = $rel === '' ? root() : root() . DS . str_replace('/', DS, $rel);
     if ($existing) {
         $rp = realpath($full);
         if ($rp === false) throw new RuntimeException('not found');
@@ -151,9 +160,9 @@ function resolve(string $rel, bool $existing = true): array {
     if ($par === false) throw new RuntimeException('bad parent');
     $w = link_walk($dir);
     if ($w === false) throw new RuntimeException('bad parent');
-    if ($w === true) return [$dir . '\\' . basename($full), $rel];
+    if ($w === true) return [$dir . DS . basename($full), $rel];
     if (!inside($par)) throw new RuntimeException('bad parent');
-    return [$par . '\\' . basename($full), $rel];
+    return [$par . DS . basename($full), $rel];
 }
 
 function ext_of(string $n): string { return strtolower(pathinfo($n, PATHINFO_EXTENSION)); }
@@ -173,8 +182,8 @@ function mime_of(string $n): string {
 function run_cmd(array $cmd, ?string $stdin_file, int $timeout = 90): bool {
     $err = tempnam(sys_get_temp_dir(), 'er');
     $desc = [
-        0 => $stdin_file ? ['file', $stdin_file, 'r'] : ['file', 'NUL', 'r'],
-        1 => ['file', 'NUL', 'w'],
+        0 => $stdin_file ? ['file', $stdin_file, 'r'] : ['file', NULDEV, 'r'],
+        1 => ['file', NULDEV, 'w'],
         2 => ['file', $err, 'w'],
     ];
     $p = @proc_open($cmd, $desc, $pipes, null, null, ['bypass_shell' => true]);

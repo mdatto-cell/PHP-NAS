@@ -4,8 +4,8 @@ start_session();
 $err = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ip  = $_SERVER['REMOTE_ADDR'] ?? '0';
-    $dir = cfg('data') . '\\throttle'; ensure_dir($dir);
-    $f   = $dir . '\\' . sha1($ip) . '.json';
+    $dir = cfg('data') . DS . 'throttle'; ensure_dir($dir);
+    $f   = $dir . DS . sha1($ip) . '.json';
     $st  = is_file($f) ? (json_decode((string)file_get_contents($f), true) ?: ['n' => 0, 't' => 0]) : ['n' => 0, 't' => 0];
     if (time() - $st['t'] > 900) $st = ['n' => 0, 't' => time()];
     if ($st['n'] >= 5) {

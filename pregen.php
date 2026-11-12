@@ -12,7 +12,7 @@ $w = ((int)($opt['w'] ?? 320)) >= 1000 ? 1600 : 320;
 $si = 0; $sn = 1;
 if (isset($opt['shard']) && preg_match('~^(\d+)/(\d+)$~', $opt['shard'], $m) && (int)$m[2] > 0 && (int)$m[1] < (int)$m[2]) { $si = (int)$m[1]; $sn = (int)$m[2]; }
 
-$lockf = fopen(cfg('data') . "\\pregen_{$w}_{$si}_{$sn}.lock", 'c');
+$lockf = fopen(cfg('data') . DS . "pregen_{$w}_{$si}_{$sn}.lock", 'c');
 if (!$lockf || !flock($lockf, LOCK_EX | LOCK_NB)) { echo "Уже запущен\n"; exit(0); }
 
 $db = photos_db();
@@ -21,7 +21,7 @@ $done = 0; $skip = 0; $fail = 0; $k = 0;
 foreach ($rows as $r) {
     if ($k++ % $sn !== $si) continue;
     if (time() > $deadline) { echo "Лимит времени\n"; break; }
-    $full = root() . '\\' . str_replace('/', '\\', $r['path']);
+    $full = root() . DS . str_replace('/', DS, $r['path']);
     if (!is_file($full)) continue;
     $info = thumb_info($full, $w);
     if (!$info || is_file($info[1]) || is_file($info[1] . '.fail')) { $skip++; continue; }

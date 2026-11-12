@@ -6,7 +6,7 @@ require __DIR__ . '/photos_lib.php';
 set_time_limit(0);
 ini_set('memory_limit', '512M');
 
-$lockf = fopen(cfg('data') . '\\scan.lock', 'c');
+$lockf = fopen(cfg('data') . DS . 'scan.lock', 'c');
 if (!$lockf || !flock($lockf, LOCK_EX | LOCK_NB)) { echo "Уже запущен\n"; exit(0); }
 
 $IMG = ['jpg','jpeg','png','gif','webp','heic','heif','avif','tif','tiff','bmp'];
@@ -57,13 +57,13 @@ while ($stack) {
     $names = @scandir($dir);
     if ($names === false) {
         $errors++; echo "Нет доступа: $dir\n";
-        $rel = str_replace('\\', '/', substr($dir, $rootLen));
+        $rel = str_replace(DS, '/', substr($dir, $rootLen));
         $keep->execute([$scan, addcslashes($rel, '%_\\') . '/%']);
         continue;
     }
     foreach ($names as $name) {
         if ($name === '.' || $name === '..' || is_hidden($name) || isset($exclude[strtolower($name)])) continue;
-        $f = $dir . '\\' . $name;
+        $f = $dir . DS . $name;
         if (is_link($f)) continue;
         if (is_dir($f)) { $stack[] = $f; continue; }
         $e = ext_of($name);
@@ -71,7 +71,7 @@ while ($stack) {
         if (!$kind) continue;
         $size = (int)@filesize($f); $mt = (int)@filemtime($f);
         if ($kind === 'i' && $size < $minSize) continue;
-        $rel = str_replace('\\', '/', substr($f, $rootLen));
+        $rel = str_replace(DS, '/', substr($f, $rootLen));
         $same->execute([$scan, $rel, $size, $mt]);
         if ($same->rowCount() === 0) {
             $ups->execute([$rel, $name, $kind, $size, $mt, taken_of($f, $e, $name, $mt, $heicExif, $magick), $scan]);
